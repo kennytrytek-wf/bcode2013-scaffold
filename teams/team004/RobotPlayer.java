@@ -9,10 +9,6 @@ import battlecode.common.RobotController;
 import battlecode.common.RobotType;
 import battlecode.common.MapLocation;
 
-/** The example funcs player is a player meant to demonstrate basic usage of the most common commands.
- * Robots will move around randomly, occasionally mining and writing useless messages.
- * The HQ will spawn soldiers continuously.
- */
 public class RobotPlayer {
 	public static void run(RobotController rc) {
 		while (true) {
@@ -39,13 +35,14 @@ public class RobotPlayer {
 						Direction dirRight = dir.rotateRight();
 						Direction[] dirArray = new Direction[]{dir, dirLeft, dirRight};
 						Collections.shuffle(Arrays.asList(dirArray));
-						boolean defuse = true;
+						boolean defuse = false;
 						Direction nextDir = null;
                         MapLocation nextLoc = null;
                         for (int i=0; i < dirArray.length; i++) {
                             nextDir = dirArray[i];
                             nextLoc = loc.add(nextDir);
                             if (rc.senseMine(nextLoc) != null) {
+                                defuse = true;
                                 continue;
                             } else if (rc.canMove(nextDir)) {
                                 rc.move(nextDir);
