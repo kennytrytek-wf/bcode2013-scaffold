@@ -1,52 +1,69 @@
-package oldMe;
+package team004;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 import battlecode.common.Direction;
 import battlecode.common.GameConstants;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
+import battlecode.common.MapLocation;
 
-/** The example funcs player is a player meant to demonstrate basic usage of the most common commands.
- * Robots will move around randomly, occasionally mining and writing useless messages.
- * The HQ will spawn soldiers continuously.
- */
 public class RobotPlayer {
-    public static void run(RobotController rc) {
-        while (true) {
-            try {
-                if (rc.getType() == RobotType.HQ) {
-                    if (rc.isActive()) {
-                        // Spawn a soldier
-                        Direction dir = rc.getLocation().directionTo(rc.senseEnemyHQLocation());
-                        if (rc.canMove(dir))
-                            rc.spawn(dir);
-                    }
-                } else if (rc.getType() == RobotType.SOLDIER) {
-                    if (rc.isActive()) {
-                        if (Math.random()<0.005) {
-                            // Lay a mine
-                            if(rc.senseMine(rc.getLocation())==null)
-                                rc.layMine();
-                        } else {
-                            // Choose a random direction, and move that way if possible
-                            Direction dir = rc.getLocation().directionTo(rc.senseEnemyHQLocation());
-                            if(rc.canMove(dir)) {
-                                rc.move(dir);
-                                rc.setIndicatorString(0, "Moving to enemy base: "+dir.toString());
+	public static void run(RobotController rc) {
+		while (true) {
+			try {
+				if (rc.getType() == RobotType.HQ) {
+					if (rc.isActive()) {
+						// Spawn a soldier
+						Direction origDir = rc.getLocation().directionTo(rc.senseEnemyHQLocation()).rotateRight();
+						Direction dir = origDir.rotateLeft();
+						boolean rotated = false;
+						while (true) {
+						    if (rc.canMove(dir)) {
+						        rc.spawn(dir);
+						        break;
+						    } else if (dir == origDir) {
+						        break;
+						    } else {
+						        dir = dir.rotateLeft();
+						    }
+						}
+					}
+				} else if (rc.getType() == RobotType.SOLDIER) {
+					if (rc.isActive()) {
+					    MapLocation loc = rc.getLocation();
+						Direction dir = loc.directionTo(rc.senseEnemyHQLocation());
+						Direction dirLeft = dir.rotateLeft();
+						Direction dirRight = dir.rotateRight();
+						Direction[] dirArray = new Direction[]{dir, dirLeft, dirRight};
+						Collections.shuffle(Arrays.asList(dirArray));
+						boolean defuse = false;
+						Direction nextDir = null;
+                        MapLocation nextLoc = null;
+                        for (int i=0; i < dirArray.length; i++) {
+                            nextDir = dirArray[i];
+                            nextLoc = loc.add(nextDir);
+                            if (rc.senseMine(nextLoc) != null) {
+                                defuse = true;
+                                continue;
+                            } else if (rc.canMove(nextDir)) {
+                                rc.move(nextDir);
+                                defuse = false;
+                                break;
                             }
                         }
-                    }
+                        if (defuse) {
+                            rc.defuseMine(nextLoc);
+                        }
+					}
+				}
 
-                    if (Math.random()<0.01 && rc.getTeamPower()>5) {
-                        // Write the number 5 to a position on the message board corresponding to the robot's ID
-                        rc.broadcast(rc.getRobot().getID()%GameConstants.BROADCAST_MAX_CHANNELS, 5);
-                    }
-                }
-
-                // End turn
-                rc.yield();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
+				// End turn
+				rc.yield();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
 }
