@@ -16,9 +16,7 @@ public class RobotPlayer {
 				if (rc.getType() == RobotType.HQ) {
 					if (rc.isActive()) {
 						// Spawn a soldier
-						Direction origDir = rc.getLocation().directionTo(
-						    rc.senseEnemyHQLocation()).rotateRight();
-
+						Direction origDir = rc.getLocation().directionTo(rc.senseEnemyHQLocation()).rotateRight();
 						Direction dir = origDir.rotateLeft();
 						boolean rotated = false;
 						while (true) {
@@ -35,20 +33,14 @@ public class RobotPlayer {
 				} else if (rc.getType() == RobotType.SOLDIER) {
 					if (rc.isActive()) {
 					    MapLocation loc = rc.getLocation();
-						Direction dir = loc.directionTo(
-						    rc.senseEnemyHQLocation());
-
-						Direction[] dirArray = new Direction[]{
-						    dir, dir.rotateLeft(), dir.rotateRight()};
-
+						Direction dir = loc.directionTo(rc.senseEnemyHQLocation());
+						Direction dirLeft = dir.rotateLeft();
+						Direction dirRight = dir.rotateRight();
+						Direction[] dirArray = new Direction[]{dir, dirLeft, dirRight};
 						Collections.shuffle(Arrays.asList(dirArray));
 						boolean defuse = false;
 						Direction nextDir = null;
                         MapLocation nextLoc = null;
-                        if (rc.senseEncampmentSquare(loc)) {
-                            rc.captureEncampment(RobotType.SUPPLIER);
-                            dirArray = new Direction[]{};
-                        }
                         for (int i=0; i < dirArray.length; i++) {
                             nextDir = dirArray[i];
                             nextLoc = loc.add(nextDir);
