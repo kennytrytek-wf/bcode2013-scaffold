@@ -16,15 +16,18 @@ public class RobotPlayer {
 				if (rc.getType() == RobotType.HQ) {
 					if (rc.isActive()) {
 						// Spawn a soldier
-						Direction origDir = rc.getLocation().directionTo(rc.senseEnemyHQLocation());
+						Direction origDir = rc.getLocation().directionTo(rc.senseEnemyHQLocation()).rotateRight();
 						Direction dir = origDir.rotateLeft();
 						boolean rotated = false;
-						while (!rc.canMove(dir) && dir != origDir) {
-						    dir = origDir.rotateLeft();
-						    rotated = true;
-						}
-						if (!(rotated && dir == origDir)) {
-                            rc.spawn(dir);
+						while (true) {
+						    if (rc.canMove(dir)) {
+						        rc.spawn(dir);
+						        break;
+						    } else if (dir == origDir) {
+						        break;
+						    } else {
+						        dir = dir.rotateLeft();
+						    }
 						}
 					}
 				} else if (rc.getType() == RobotType.SOLDIER) {
