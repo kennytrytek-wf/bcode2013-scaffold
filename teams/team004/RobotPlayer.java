@@ -45,8 +45,8 @@ public class RobotPlayer {
 						boolean defuse = false;
 						Direction nextDir = null;
                         MapLocation nextLoc = null;
-                        if rc.senseEncampmentSquare(loc) {
-                            captureEncampment(RobotType.SUPPLIER);
+                        if (rc.senseEncampmentSquare(loc)) {
+                            rc.captureEncampment(RobotType.SUPPLIER);
                             dirArray = new Direction[]{};
                         }
                         for (int i=0; i < dirArray.length; i++) {
