@@ -150,12 +150,13 @@ class RobotManager extends Manager {
         return ((int) Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)));
     }
 
-    public void raid(RobotController rc) throws GameActionException {
+    public boolean raid(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
         Direction[] dirArray = this.getMoveDirections(rc);
 
         //Make a move
         boolean defuse = false;
+        boolean canMove = false;
         Direction nextDir = null;
         MapLocation nextLoc = null;
         for (int i=0; i < dirArray.length; i++) {
@@ -167,15 +168,20 @@ class RobotManager extends Manager {
                 defuse = true;
                 continue;
             } else if (rc.canMove(nextDir)) {
+                canMove = true;
                 defuse = false;
                 break;
             }
         }
         if (defuse) {
             rc.defuseMine(nextLoc);
-        } else {
+        } else if (canMove) {
             rc.move(nextDir);
+        } else {
+            //add enemy pursuit mode
+            return false;
         }
+        return true;
     }
 
     public void moveNearHQ(RobotController rc) throws GameActionException {
@@ -187,7 +193,9 @@ class RobotManager extends Manager {
             return;
         }
 
-        this.raid(rc);
+        if (!this.raid(rc)) {
+            this.waitPatiently(rc);
+        }
     }
 
     public void waitPatiently(RobotController rc) throws GameActionException {
@@ -197,7 +205,7 @@ class RobotManager extends Manager {
             return;
         }
         //determine if raiding party is ready
-        if ((Clock.getRoundNum() % 50) == 0) {
+        if ((Clock.getRoundNum() % 30) == 0) {
             this.changeRobotState(RobotState.RAID);
         }
     }
