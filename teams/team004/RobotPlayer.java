@@ -11,6 +11,7 @@ import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
+import battlecode.common.GameObject;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
@@ -45,9 +46,11 @@ class RobotState {
     final static int MOVE_NEAR_HQ = 0;
     final static int WAIT = 1;
     final static int RAID = 2;
+    final static int ENEMY_PURSUIT = 3;
 
     int action;
     int robotID;
+    GameObject pursuing;
 
     RobotState(int robotID) {
         this.robotID = robotID;
@@ -115,6 +118,7 @@ class RobotManager extends Manager {
                     case RobotState.RAID: this.raid(rc); break;
                     case RobotState.MOVE_NEAR_HQ: this.moveNearHQ(rc); break;
                     case RobotState.WAIT: this.waitPatiently(rc); break;
+                    case RobotState.ENEMY_PURSUIT: this.pursueEnemy(rc); break;
                 }
             }
         } catch (Exception e) {
@@ -150,52 +154,71 @@ class RobotManager extends Manager {
         return ((int) Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)));
     }
 
-    public boolean raid(RobotController rc) throws GameActionException {
+    public void raid(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
         Direction[] dirArray = this.getMoveDirections(rc);
 
         //Make a move
         boolean defuse = false;
         boolean canMove = false;
+        Direction moveLoc = null;
+        boolean pursuit = false;
         Direction nextDir = null;
         MapLocation nextLoc = null;
+        Team myTeam = rc.getTeam();
         for (int i=0; i < dirArray.length; i++) {
             nextDir = dirArray[i];
             nextLoc = loc.add(nextDir);
             Team mineTeamOwner = rc.senseMine(nextLoc);
             if ((mineTeamOwner != null) && (
-                    mineTeamOwner != rc.getTeam())) {
-                defuse = true;
+                    mineTeamOwner != myTeam)) {
+                if (!canMove) {
+                    defuse = true;
+                }
                 continue;
-            } else if (rc.canMove(nextDir)) {
-                canMove = true;
-                defuse = false;
-                break;
+            } else {
+                GameObject obj = rc.senseObjectAtLocation(nextLoc);
+                if (obj == null) {
+                    canMove = true;
+                    defuse = false;
+                    moveLoc = dirArray[i];
+                } else if (obj.getTeam() != myTeam) {
+                    this.state.action = RobotState.ENEMY_PURSUIT;
+                    this.state.pursuing = obj;
+                    this.pursueEnemy(rc);
+                }
             }
         }
         if (defuse) {
             rc.defuseMine(nextLoc);
         } else if (canMove) {
-            rc.move(nextDir);
+            rc.move(moveLoc);
         } else {
-            //add enemy pursuit mode
-            return false;
+            this.waitPatiently(rc);
         }
-        return true;
+    }
+
+    public void pursueEnemy(RobotController rc) throws GameActionException {
+        try {
+            MapLocation loc = rc.getLocation();
+            MapLocation enemyLoc = rc.senseLocationOf(this.state.pursuing);
+            Direction dir = loc.directionTo(enemyLoc);
+            rc.move(dir);
+        } catch (GameActionException e) {
+            this.state.action = RobotState.RAID;
+            this.raid(rc);
+        }
     }
 
     public void moveNearHQ(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
         MapLocation hqLoc = rc.senseHQLocation();
-        if (this.distance(loc, hqLoc) >= 5) {
+        if (this.distance(loc, hqLoc) >= 3) {
             this.changeRobotState(RobotState.WAIT);
             this.waitPatiently(rc);
             return;
         }
-
-        if (!this.raid(rc)) {
-            this.waitPatiently(rc);
-        }
+        this.raid(rc);
     }
 
     public void waitPatiently(RobotController rc) throws GameActionException {
@@ -205,7 +228,7 @@ class RobotManager extends Manager {
             return;
         }
         //determine if raiding party is ready
-        if ((Clock.getRoundNum() % 30) == 0) {
+        if ((Clock.getRoundNum() % 25) == 0) {
             this.changeRobotState(RobotState.RAID);
         }
     }
