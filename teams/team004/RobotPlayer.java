@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.HashMap;
 import java.util.Random;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -46,24 +47,22 @@ class RobotState {
     final static int RAID = 2;
 
     int action;
-    int group;
     int robotID;
 
-    RobotState(int robotID, int group) {
+    RobotState(int robotID) {
         this.robotID = robotID;
-        this.group = group;
         this.action = RobotState.MOVE_NEAR_HQ;
     }
 }
 
 abstract class Manager {
     abstract void move(RobotController rc);
-    abstract RobotState getOrCreateRobotState(int robotID);
+    abstract RobotState createRobotState(RobotController rc);
 }
 
 class HeadquartersManager extends Manager {
-    public RobotState getOrCreateRobotState(int robotID) {
-        return new RobotState(10, 0);
+    public RobotState createRobotState(RobotController rc) {
+        return new RobotState(10);
     }
 
     public void move(RobotController rc) {
@@ -96,58 +95,27 @@ class HeadquartersManager extends Manager {
 }
 
 class RobotManager extends Manager {
-    static int currentGroup;
-    static int groupCount;
+    RobotState state;
 
-    RobotManager() {
-        this.currentGroup = 0;
-        this.groupCount = 0; //HQ exists before all Robots
+    public RobotState createRobotState(RobotController rc) {
+        return new RobotState(rc.getRobot().getID());
     }
 
-    public RobotState getOrCreateRobotState(int robotID) {
-        RobotState state = this.states.get(robotID);
-        if (state == null) {
-            state = new RobotState(robotID, this.currentGroup);
-            this.states.put(robotID, state);
-            //this.groups.get(currentGroup).add(state);
-        }
-        return state;
-    }
-
-    public void changeGroupState(RobotController rc, int newState) {
-        RobotState currentState = this.getOrCreateRobotState(
-                rc.getRobot().getID());
-
-        Iterator<RobotState> groupIterator = this.groups.get(
-            currentState.group).iterator();
-
-        while (groupIterator.hasNext()) {
-            RobotState s = groupIterator.next();
-            s.action = newState;
-            this.states.get(s.robotID).action = newState;
-        }
-    }
-
-    public void changeRobotState(RobotController rc, int newState) {
-        int myID = rc.getRobot().getID();
-        RobotState state = this.getOrCreateRobotState(myID);
-        state.action = newState;
+    public void changeRobotState(int newState) {
+        this.state.action = newState;
     }
 
     public void move(RobotController rc) {
         try {
-            this.moveNumber += 1;
+            if (this.state == null) {
+                this.state = this.createRobotState(rc);
+            }
             if (rc.isActive()) {
-                int myID = rc.getRobot().getID();
-                RobotState state = this.getOrCreateRobotState(myID);
-                switch(state.action) {
+                switch(this.state.action) {
                     case RobotState.RAID: this.raid(rc); break;
                     case RobotState.MOVE_NEAR_HQ: this.moveNearHQ(rc); break;
                     case RobotState.WAIT: this.waitPatiently(rc); break;
                 }
-            }
-            if (this.moveNumber > 50) {
-                this.moveNumber = 0;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -214,7 +182,7 @@ class RobotManager extends Manager {
         MapLocation loc = rc.getLocation();
         MapLocation hqLoc = rc.senseHQLocation();
         if (this.distance(loc, hqLoc) >= 5) {
-            this.changeRobotState(rc, RobotState.WAIT);
+            this.changeRobotState(RobotState.WAIT);
             this.waitPatiently(rc);
             return;
         }
@@ -224,15 +192,13 @@ class RobotManager extends Manager {
 
     public void waitPatiently(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
-
-        /*if (rc.senseMine(loc) == null) {
+        if (rc.senseMine(loc) == null) {
             rc.layMine();
             return;
-        }*/
+        }
         //determine if raiding party is ready
         if ((Clock.getRoundNum() % 50) == 0) {
-            //this.changeGroupState(rc, RobotState.RAID);
-            this.changeRobotState(rc, RobotState.RAID);
+            this.changeRobotState(RobotState.RAID);
         }
     }
 }
