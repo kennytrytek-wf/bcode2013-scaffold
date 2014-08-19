@@ -66,14 +66,18 @@ class RobotState {
     final static int WAIT = 1;
     final static int RAID = 2;
     final static int ENEMY_PURSUIT = 3;
+    final static int HELP = 4;
 
     int action;
     int robotID;
     GameObject pursuing;
+    MapLocation helpLocation;
+    boolean helpLocationSet;
 
     RobotState(int robotID) {
         this.robotID = robotID;
         this.action = RobotState.MOVE_NEAR_HQ;
+        this.helpLocationSet = false;
     }
 }
 
@@ -126,6 +130,9 @@ class RobotManager extends Manager {
     RobotState state;
     int raidDelay;
     int rallyPointDistance;
+    Team myTeam;
+    Team opponent;
+    boolean init;
 
     public RobotState createRobotState(RobotController rc) {
         return new RobotState(rc.getRobot().getID());
@@ -137,7 +144,7 @@ class RobotManager extends Manager {
 
     public void move(RobotController rc) {
         try {
-            if (this.state == null) {
+            if (!init) {
                 this.state = this.createRobotState(rc);
                 this.mapInfo = new MapInfo(rc);
                 if (this.mapInfo.mapSize == MapInfo.SMALL) {
@@ -150,18 +157,41 @@ class RobotManager extends Manager {
                     this.raidDelay = 10;
                     this.rallyPointDistance = 4;
                 }
+                this.myTeam = rc.getTeam();
+                if (this.myTeam == Team.A) {
+                    this.opponent = Team.B;
+                } else {
+                    this.opponent = Team.A;
+                }
+                this.init = true;
             }
             if (rc.isActive()) {
+                MapLocation helpLocation = this.readBroadcast(rc);
+                if ((helpLocation != null) && (this.state.helpLocation == null)) {
+                    this.broadcast(rc, helpLocation);
+                    this.state.action = RobotState.HELP;
+                    this.state.helpLocation = helpLocation;
+                }
                 switch(this.state.action) {
                     case RobotState.RAID: this.raid(rc); break;
                     case RobotState.MOVE_NEAR_HQ: this.moveNearHQ(rc); break;
                     case RobotState.WAIT: this.waitPatiently(rc); break;
                     case RobotState.ENEMY_PURSUIT: this.pursueEnemy(rc); break;
+                    case RobotState.HELP: this.help(rc); break;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public Direction[] getMoveDirections(RobotController rc, MapLocation target)
+            throws GameActionException {
+        MapLocation loc = rc.getLocation();
+
+        //Define possible directions to move
+        Direction dir = loc.directionTo(target);
+        return this.randomizeDirection(rc, dir);
     }
 
     public Direction[] getMoveDirections(RobotController rc, GameObject target)
@@ -210,11 +240,31 @@ class RobotManager extends Manager {
         this.raid(rc, dirArray);
     }
 
+    public void broadcast(RobotController rc, MapLocation m) throws GameActionException {
+        rc.broadcast(5, m.x);
+        rc.broadcast(6, m.y);
+    }
+
+    public MapLocation readBroadcast(RobotController rc) throws GameActionException {
+        int x = rc.readBroadcast(5);
+        int y;
+        if (x > 0) {
+            y = rc.readBroadcast(6);
+            return new MapLocation(5, 6);
+        }
+        return null;
+    }
+
     public void raid(RobotController rc, Direction[] dirArray) throws
             GameActionException {
-        Team myTeam = rc.getTeam();
         MapLocation loc = rc.getLocation();
-        GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 5, null);
+        GameObject[] go = rc.senseNearbyGameObjects(
+            Robot.class, loc, 5, this.opponent);
+
+        if (go.length > 5) {
+            this.broadcast(rc, loc);
+        }
+        Team myTeam = rc.getTeam();
         for (int i=0; i < go.length; i++) {
             GameObject obj = go[i];
             if (obj.getTeam() != myTeam) {
@@ -224,8 +274,6 @@ class RobotManager extends Manager {
                 return;
             }
         }
-
-
         boolean defuse = false;
         boolean canMove = false;
         Direction nextDir = null;
@@ -290,6 +338,29 @@ class RobotManager extends Manager {
             this.raid(rc);
         } else {
             this.moveToTarget(rc, this.state.pursuing);
+        }
+    }
+
+    public void help(RobotController rc) throws GameActionException {
+        MapLocation loc = rc.getLocation();
+        MapLocation target = this.state.helpLocation;
+        int distanceToHelp = this.distance(loc, target);
+        if (distanceToHelp < 3) {
+            this.state.helpLocation = null;
+            this.state.helpLocationSet = false;
+            this.state.action = RobotState.RAID;
+        }
+        if (this.state.helpLocationSet) {
+            Direction[] dirArray = this.getMoveDirections(rc, target);
+            this.raid(rc, dirArray);
+            return;
+        }
+        int distanceToEnemy = this.distance(loc, rc.senseEnemyHQLocation());
+        if ((distanceToEnemy < distanceToHelp) || (this.state.action == RobotState.RAID)) {
+            this.state.helpLocation = null;
+            this.state.helpLocationSet = false;
+            this.state.action = RobotState.RAID;
+            this.raid(rc);
         }
     }
 
