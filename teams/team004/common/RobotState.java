@@ -7,6 +7,7 @@ public class RobotState {
     final public static int WAIT = 1;
     final public static int RAID = 2;
     final public static int ENEMY_PURSUIT = 3;
+    final public static int RETREAT = 4;
 
     public int action;
     public int robotID;

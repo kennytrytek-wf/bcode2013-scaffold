@@ -1,6 +1,7 @@
 package team004.robot;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
 
@@ -63,16 +64,9 @@ public class RobotManager extends Manager {
                 case RobotState.MOVE_NEAR_HQ: this.moveNearHQ(rc); break;
                 case RobotState.WAIT: this.waitPatiently(rc, false); break;
                 case RobotState.ENEMY_PURSUIT: this.pursueEnemy(rc); break;
+                case RobotState.RETREAT: this.retreat(rc); break;
             }
         }
-    }
-
-    public void broadcast(RobotController rc, MapLocation loc) {
-
-    }
-
-    public MapLocation readBroadcast(RobotController rc) {
-        return new MapLocation(0, 0);
     }
 
     public Direction[] getMoveDirections(RobotController rc, MapLocation target)
@@ -132,24 +126,38 @@ public class RobotManager extends Manager {
         this.raid(rc, dirArray);
     }
 
-    public boolean detectEnemies(RobotController rc, MapLocation loc) throws GameActionException {
-        GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 5, null);
+    public int chaseEnemies(RobotController rc, MapLocation loc) throws GameActionException {
+        GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 25, null);
+        ArrayList<GameObject> enemy = new ArrayList<GameObject>();
+        ArrayList<GameObject> friendly = new ArrayList<GameObject>();
         for (int i=0; i < go.length; i++) {
             GameObject obj = go[i];
-            if (obj.getTeam() != this.myTeam) {
-                this.state.action = RobotState.ENEMY_PURSUIT;
-                this.state.pursuing = obj;
-                this.pursueEnemy(rc);
-                return true;
+            if (obj.getTeam() == this.myTeam) {
+                friendly.add(obj);
+            } else {
+                enemy.add(obj);
             }
         }
-        return false;
+        if ((friendly.size() > 1) && (enemy.size() > 0)) {
+            this.state.action = RobotState.ENEMY_PURSUIT;
+            this.state.pursuing = enemy.get(0);
+            this.pursueEnemy(rc);
+            return RobotState.ENEMY_PURSUIT;
+        } else if (friendly.size() < 1) {
+            return RobotState.RETREAT;
+        } else {
+            return RobotState.RAID;
+        }
     }
 
     public void raid(RobotController rc, Direction[] dirArray) throws
             GameActionException {
         MapLocation loc = rc.getLocation();
-        if (this.detectEnemies(rc, loc)) {
+        int chase = this.chaseEnemies(rc, loc);
+        if (chase == RobotState.RETREAT) {
+            this.retreat(rc);
+            return;
+        } else if (chase == RobotState.ENEMY_PURSUIT) {
             return;
         }
         boolean defuse = false;
@@ -181,10 +189,35 @@ public class RobotManager extends Manager {
         }
     }
 
+    public void retreat(RobotController rc) throws GameActionException {
+        MapLocation loc = rc.getLocation();
+        GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 25, this.myTeam);
+        rc.setIndicatorString(0, "" + go.length);
+        if (go.length > 1) {
+            this.changeRobotState(RobotState.RAID);
+            this.raid(rc);
+            return;
+        }
+        MapLocation hqLoc = rc.senseHQLocation();
+        this.moveToTarget(rc, hqLoc);
+    }
+
+    public void moveToTarget(RobotController rc, MapLocation destination) throws GameActionException {
+        MapLocation loc = rc.getLocation();
+        Direction[] dirArray = this.getMoveDirections(rc, destination);
+        this.moveInDirection(rc, loc, dirArray);
+    }
+
     public void moveToTarget(RobotController rc, GameObject target) throws
             GameActionException {
         MapLocation loc = rc.getLocation();
         Direction[] dirArray = this.getMoveDirections(rc, target);
+        this.moveInDirection(rc, loc, dirArray);
+    }
+
+
+    public void moveInDirection(
+            RobotController rc, MapLocation loc, Direction[] dirArray) throws GameActionException {
         boolean canMove = false;
         Direction nextDir = null;
         MapLocation nextLoc = null;
@@ -217,30 +250,6 @@ public class RobotManager extends Manager {
             this.moveToTarget(rc, this.state.pursuing);
         }
     }
-
-    /*
-    public void help(RobotController rc) throws GameActionException {
-        MapLocation loc = rc.getLocation();
-        MapLocation target = this.state.helpLocation;
-        int distanceToHelp = this.distance(loc, target);
-        if (distanceToHelp < 3) {
-            this.state.helpLocation = null;
-            this.state.helpLocationSet = false;
-            this.state.action = RobotState.RAID;
-        }
-        if (this.state.helpLocationSet) {
-            Direction[] dirArray = this.getMoveDirections(rc, target);
-            this.raid(rc, dirArray);
-            return;
-        }
-        int distanceToEnemy = this.distance(loc, rc.senseEnemyHQLocation());
-        if ((distanceToEnemy < distanceToHelp) || (this.state.action == RobotState.RAID)) {
-            this.state.helpLocation = null;
-            this.state.helpLocationSet = false;
-            this.state.action = RobotState.RAID;
-            this.raid(rc);
-        }
-    }*/
 
     public void moveNearHQ(RobotController rc) throws GameActionException {
         MapLocation loc = rc.getLocation();
