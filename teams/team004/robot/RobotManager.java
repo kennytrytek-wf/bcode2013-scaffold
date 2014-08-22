@@ -105,7 +105,7 @@ public class RobotManager extends Manager {
         Direction[] dirArray = new Direction[]{dir, dirLeft, dirRight};
 
         //Randomize direction
-        int[] randIndexes = new int[]{rand.nextInt(3), rand.nextInt(3)};
+        int[] randIndexes = new int[]{rand.nextInt(2) + 1, rand.nextInt(2) + 1};
         Direction tmp = dirArray[randIndexes[0]].rotateLeft();
         dirArray[randIndexes[0]] = dirArray[randIndexes[1]];
         dirArray[randIndexes[1]] = tmp.rotateRight();
