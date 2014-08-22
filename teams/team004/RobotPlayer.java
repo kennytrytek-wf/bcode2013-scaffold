@@ -3,19 +3,23 @@ package team004;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
 
+import team004.artillery.ArtilleryManager;
 import team004.interfaces.Manager;
 import team004.hq.HeadquartersManager;
+import team004.robot.NOOP;
 import team004.robot.RobotManager;
 
 public class RobotPlayer {
-    public static HeadquartersManager hq = new HeadquartersManager();
-    public static RobotManager rm = new RobotManager();
-
 	public static void run(RobotController rc) {
-        if (rc.getType() == RobotType.HQ) {
-            RobotPlayer.move(hq, rc);
-        } else if (rc.getType() == RobotType.SOLDIER) {
-            RobotPlayer.move(rm, rc);
+	    RobotType type = rc.getType();
+        if (type == RobotType.HQ) {
+            RobotPlayer.move(new HeadquartersManager(), rc);
+        } else if (type == RobotType.SOLDIER) {
+            RobotPlayer.move(new RobotManager(), rc);
+        } else if (type == RobotType.ARTILLERY) {
+            RobotPlayer.move(new ArtilleryManager(), rc);
+        } else {
+            RobotPlayer.move(new NOOP(), rc);
         }
     }
 
