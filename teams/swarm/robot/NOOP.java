@@ -1,4 +1,4 @@
-package team004.robot;
+package swarm.robot;
 
 import java.util.Random;
 
@@ -8,9 +8,9 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
 
-import team004.interfaces.Manager;
-import team004.common.RobotState;
-import team004.common.MapInfo;
+import swarm.interfaces.Manager;
+import swarm.common.RobotState;
+import swarm.common.MapInfo;
 
 public class NOOP extends Manager {
     public RobotState createRobotState(RobotController rc) {

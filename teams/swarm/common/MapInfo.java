@@ -1,4 +1,4 @@
-package team004.common;
+package swarm.common;
 
 import battlecode.common.RobotController;
 
