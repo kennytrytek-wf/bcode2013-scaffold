@@ -98,9 +98,7 @@ public class HeadquartersManager extends Manager {
             this.researchChunkSize = 8;
         }
         this.rand = new Random(this.state.robotID);
-        this.upgradeList = new Upgrade[]{
-            Upgrade.DEFUSION, Upgrade.FUSION};
-
+        this.upgradeList = new Upgrade[]{Upgrade.FUSION};
         this.upgradeIndex = 0;
         this.upgradeRoundsLeft = this.upgradeList[this.upgradeIndex].numRounds;
         this.currentResearchCount = this.researchChunkSize;

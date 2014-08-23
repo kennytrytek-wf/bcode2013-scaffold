@@ -28,7 +28,7 @@ public class RobotManager extends Manager {
     boolean init;
     Team myTeam;
     Team opponent;
-    boolean noRetreat;
+    boolean enableRetreat;
     MapLocation currentLoc;
     int roundsAtCurrentLoc;
     boolean encamping;
@@ -51,13 +51,15 @@ public class RobotManager extends Manager {
             if (this.mapInfo.mapSize == MapInfo.SMALL) {
                 this.raidDelay = 30;
                 this.rallyPointDistance = 2;
-                this.noRetreat = true;
+                this.enableRetreat = false;
             } else if (this.mapInfo.mapSize == MapInfo.MEDIUM) {
                 this.raidDelay = 30;
                 this.rallyPointDistance = 4;
+                this.enableRetreat = true;
             } else {
                 this.raidDelay = 40;
                 this.rallyPointDistance = 5;
+                this.enableRetreat = true;
             }
             this.myTeam = rc.getTeam();
             this.opponent = this.myTeam.opponent();
@@ -126,7 +128,6 @@ public class RobotManager extends Manager {
         Direction tmp = dirArray[randIndexes[0]].rotateLeft();
         dirArray[randIndexes[0]] = dirArray[randIndexes[1]];
         dirArray[randIndexes[1]] = tmp.rotateRight();
-        Collections.shuffle(Arrays.asList(dirArray));
         return dirArray;
     }
 
@@ -160,7 +161,7 @@ public class RobotManager extends Manager {
             this.state.pursuing = enemy.get(0);
             this.pursueEnemy(rc);
             return RobotState.ENEMY_PURSUIT;
-        } else if ((friendly.size() < 2) && (!this.noRetreat)) {
+        } else if ((friendly.size() < 2) && (this.enableRetreat)) {
             return RobotState.RETREAT;
         } else {
             return RobotState.RAID;
@@ -178,18 +179,9 @@ public class RobotManager extends Manager {
             return;
         }
         if (rc.senseEncampmentSquare(loc)) {
-            RobotType[] selection = new RobotType[]{
-                RobotType.ARTILLERY,
-                RobotType.SUPPLIER,
-                RobotType.HQ
-            };
-            Random rand = new Random(rc.getRobot().getID());
-            RobotType encampmentType = selection[rand.nextInt(3)];
-            if (encampmentType != RobotType.HQ) {
-                rc.captureEncampment(encampmentType);
-                this.encamping = true;
-                return;
-            }
+            rc.captureEncampment(RobotType.ARTILLERY);
+            this.encamping = true;
+            return;
         }
         boolean defuse = false;
         boolean canMove = false;
