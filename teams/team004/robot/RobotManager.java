@@ -49,7 +49,7 @@ public class RobotManager extends Manager {
         if (this.establishCanary(rc)) {
             return;
         }
-        if (this.establishMedbay(rc)) {
+        if (this.establishOutpost(rc)) {
             return;
         }
         if (this.myLoc == this.myPreviousLoc) {
@@ -73,7 +73,7 @@ public class RobotManager extends Manager {
             rc.setIndicatorString(0, "Found enemy. Attacking: (" + enemyLoc.x + ", " + enemyLoc.y + ")");
             boolean defuse = false;
             if (this.roundsInSameLoc > 10) {
-                defuse = this.rand.nextInt(25) == 1;
+                defuse = this.rand.nextInt(15) == 1;
             }
             this.attack(rc, enemyLoc, defuse);
         } else if (this.shouldGather()) {
@@ -113,44 +113,53 @@ public class RobotManager extends Manager {
         return false;
     }
 
-    private boolean establishMedbay(RobotController rc) throws GameActionException {
-        MapLocation medbay = Radio.readLocation(rc, Radio.MEDBAY);
+    private boolean establishOutpost(RobotController rc) throws GameActionException {
+        MapLocation outpost = Radio.readLocation(rc, Radio.OUTPOST);
         boolean onEncampment = rc.senseEncampmentSquare(this.myLoc);
         if (onEncampment && (this.myLoc.x + 1 == rc.getMapWidth() || this.myLoc.y + 1 == rc.getMapHeight())) {
             onEncampment = false;
         }
         int deltaDistance = 9999;
-        if (medbay != null) {
+        if (outpost != null) {
             if (onEncampment) {
-                int origMedbayDistance = this.info.distance(medbay, this.info.myHQLoc);
-                int newMedbayDistance = this.info.distance(this.myLoc, this.info.myHQLoc);
-                deltaDistance = newMedbayDistance - origMedbayDistance;
+                int origOutpostDistance = this.info.distance(outpost, this.info.myHQLoc);
+                int newOutpostDistance = this.info.distance(this.myLoc, this.info.myHQLoc);
+                deltaDistance = newOutpostDistance - origOutpostDistance;
             }
-            boolean medbayExists = true;
+            boolean outpostExists = true;
+            GameObject outpostObj = null;
             try {
-                medbayExists = rc.senseObjectAtLocation(medbay) != null;
+                outpostObj = rc.senseObjectAtLocation(outpost);
+                outpostExists = outpostObj != null;
             } catch (GameActionException e) {
             }
-            if (medbayExists && (deltaDistance <= 0 || deltaDistance == 9999)) {
-                this.info.strategicPoint = this.info.locationBetween(
-                    this.info.myHQLoc, medbay, 0.40);
+            if (outpostExists && (deltaDistance >= 0 || deltaDistance == 9999)) {
+                if (this.info.distance(outpost, this.info.myHQLoc) > 10) {
+                    this.info.strategicPoint = outpost;
+                    //this.info.locationBetween(
+                    //    this.info.myHQLoc, outpost, 0.40, rc);
+                } else {
+                    this.info.strategicPoint = outpost;
+                }
 
                 return false;
             } else {
-                Radio.writeLocation(rc, Radio.MEDBAY, new MapLocation(0, 0));
+                Radio.writeLocation(rc, Radio.OUTPOST, new MapLocation(0, 0));
                 this.info.strategicPoint = null;
             }
         }
         if (onEncampment) {
-            Radio.writeLocation(rc, Radio.MEDBAY, this.myLoc);
-            switch (this.rand.nextInt(4)) {
-                case 0:
-                case 1:
-                case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
-                case 3: rc.captureEncampment(RobotType.MEDBAY); break;
-                //case 4: rc.captureEncampment(RobotType.GENERATOR); break;
+            if (this.info.distance(this.myLoc, this.info.myHQLoc) > 5) {
+                Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
+                switch (this.rand.nextInt(4)) {
+                    case 0:
+                    case 1:
+                    case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
+                    case 3: rc.captureEncampment(RobotType.MEDBAY); break;
+                    //case 4: rc.captureEncampment(RobotType.GENERATOR); break;
+                }
+                return true;
             }
-            return true;
         }
         return false;
     }
@@ -213,9 +222,12 @@ public class RobotManager extends Manager {
     }
 
     private void gather(RobotController rc) throws GameActionException {
-        int distance = this.info.distance(this.myLoc, this.info.gatherPoint);
-        if (distance < 2) {
-            return;
+        int distanceFromGather = this.info.distance(this.myLoc, this.info.gatherPoint);
+        int distanceFromHQ = this.info.distance(this.myLoc, this.info.myHQLoc);
+        if (distanceFromHQ > 5) {
+            if (distanceFromGather < 2) {
+                return;
+            }
         }
         this.attack(rc, this.info.gatherPoint, true);
     }

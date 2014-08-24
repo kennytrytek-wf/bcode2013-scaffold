@@ -39,16 +39,12 @@ public class HeadquartersManager extends Manager {
         this.info.update(rc);
         this.signalIfEnemies(rc);
         if (rc.isActive()) {
-            /*if (this.info.round > 200 && this.visionResearch > 0) {
-                rc.researchUpgrade(Upgrade.VISION);
-                this.visionResearch -= 1;
-            } else if (this.info.round > 400 && this.fusionResearch > 0) {
+            if ((this.info.round > 200) && (this.fusionResearch > 0) && (rc.getTeamPower() < 100)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
             } else {
-            */
                 this.spawn(rc);
-            //}
+            }
         }
     }
 

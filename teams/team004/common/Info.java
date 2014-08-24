@@ -25,14 +25,13 @@ public class Info {
         this.myHQLoc = rc.senseHQLocation();
         this.myTeam = rc.getTeam();
         this.opponent = this.myTeam.opponent();
-        this.gatherPoint = this.calculateGatherPoint();
+        this.gatherPoint = this.calculateGatherPoint(rc);
         this.strategicPoint = null;
     }
 
     public void update(RobotController rc) {
         this.round += 1;
-        this.gatherPoint = this.calculateGatherPoint();
-        rc.setIndicatorString(2, "gatherPoint: " + this.gatherPoint);
+        this.gatherPoint = this.calculateGatherPoint(rc);
     }
 
     public int distance(MapLocation start, MapLocation end) {
@@ -43,14 +42,16 @@ public class Info {
         return ((int) Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)));
     }
 
-    public MapLocation locationBetween(MapLocation start, MapLocation end, double percentDistance) {
+    public MapLocation locationBetween(MapLocation start, MapLocation end, double percentDistance, RobotController rc) {
         double rawX = (end.x - start.x) * percentDistance;
         double rawY = (end.y - start.y) * percentDistance;
         double incrX = Math.copySign(Math.sqrt(Math.abs(rawX)), rawX);
         double incrY = Math.copySign(Math.sqrt(Math.abs(rawY)), rawY);
         int endX = start.x + this.calcIncr(incrX);
         int endY = start.y + this.calcIncr(incrY);
-        return new MapLocation(endX, endY);
+        MapLocation point = new MapLocation(endX, endY);
+        rc.setIndicatorString(2, "gatherPoint: " + point + ", incrX: " + this.calcIncr(incrX) + ", incrY: " + this.calcIncr(incrY) + ", %: " + percentDistance);
+        return point;
     }
 
     private int calcIncr(double incr) {
@@ -61,10 +62,10 @@ public class Info {
         return (int)(incr * multiplier);
     }
 
-    private MapLocation calculateGatherPoint() {
+    private MapLocation calculateGatherPoint(RobotController rc) {
         if (this.strategicPoint != null) {
             return this.strategicPoint;
         }
-        return this.locationBetween(this.myHQLoc, this.enemyHQLoc, 0.75);
+        return this.locationBetween(this.myHQLoc, this.enemyHQLoc, 0.75, rc);
     }
 }
