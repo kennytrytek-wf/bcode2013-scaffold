@@ -4,45 +4,78 @@ import java.util.Random;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
+import battlecode.common.GameObject;
 import battlecode.common.MapLocation;
+import battlecode.common.Robot;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
 import battlecode.common.Upgrade;
 
 import team004.interfaces.Manager;
-import team004.common.MapInfo;
+import team004.common.Info;
+import team004.common.Radio;
 
 public class HeadquartersManager extends Manager {
-    MapLocation myLoc;
+    Info info;
     Random rand;
+    int visionResearch;
+    int fusionResearch;
     boolean init = false;
 
     public HeadquartersManager(RobotController rc) throws GameActionException {
         this.initialize(rc);
     }
 
-    public void initialize(RobotController rc) throws GameActionException {
-        this.myLoc = rc.getLocation();
+    private void initialize(RobotController rc) throws GameActionException {
+        this.info = new Info(rc);
         this.rand = new Random(rc.getRobot().getID());
+        this.visionResearch = 25;
+        this.fusionResearch = 25;
         this.init = true;
     }
 
     public void move(RobotController rc) throws GameActionException {
+        this.info.update(rc);
+        this.signalIfEnemies(rc);
         if (rc.isActive()) {
-            this.spawn(rc);
+            /*if (this.info.round > 200 && this.visionResearch > 0) {
+                rc.researchUpgrade(Upgrade.VISION);
+                this.visionResearch -= 1;
+            } else if (this.info.round > 400 && this.fusionResearch > 0) {
+                rc.researchUpgrade(Upgrade.FUSION);
+                this.fusionResearch -= 1;
+            } else {
+            */
+                this.spawn(rc);
+            //}
         }
     }
 
+    private void signalIfEnemies(RobotController rc) throws GameActionException {
+        MapLocation senseLoc = this.info.myHQLoc;
+        rc.setIndicatorString(0, "Sensing enemies at (" + senseLoc.x + ", " + senseLoc.y + ")");
+        GameObject[] go = rc.senseNearbyGameObjects(
+            Robot.class, senseLoc, 33 * 33, this.info.opponent);
 
-    public void spawn(RobotController rc) throws GameActionException {
+        rc.setIndicatorString(1, go.length + " enemies.");
+        if (go.length == 0) {
+            return;
+        }
+        MapLocation enemyLoc = rc.senseLocationOf(go[0]);
+        Radio.writeLocation(rc, Radio.ENEMY, enemyLoc);
+    }
+
+
+    private void spawn(RobotController rc) throws GameActionException {
         // Spawn a soldier
-        Direction origDir = this.myLoc.directionTo(
+        Direction origDir = this.info.myHQLoc.directionTo(
             rc.senseEnemyHQLocation());
 
         boolean rotateLeft = this.rand.nextInt(1) > 0;
         origDir = rotateLeft ? origDir.rotateRight() : origDir.rotateLeft();
         Direction dir = rotateLeft ? origDir.rotateLeft() : origDir.rotateRight();
-        MapLocation spawnLoc = this.myLoc.add(dir);
+        MapLocation spawnLoc = this.info.myHQLoc.add(dir);
         while (true) {
             Team mineOwner = rc.senseMine(spawnLoc);
             if (rc.canMove(dir) && ((mineOwner == null) || (mineOwner == rc.getTeam()))) {
@@ -53,7 +86,7 @@ public class HeadquartersManager extends Manager {
                 return;
             } else {
                 dir = rotateLeft ? dir.rotateLeft() : dir.rotateRight();
-                spawnLoc = this.myLoc.add(dir);
+                spawnLoc = this.info.myHQLoc.add(dir);
             }
         }
     }
