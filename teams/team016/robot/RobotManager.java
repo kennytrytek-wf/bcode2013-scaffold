@@ -339,7 +339,7 @@ public class RobotManager extends Manager {
             rc.move(nextDir);
         } else {
             if (rc.senseNearbyGameObjects(Robot.class, this.myLoc, 33*33, this.info.opponent).length == 0) {
-                rc.layMine();
+                //rc.layMine();
             }
         }
     }
