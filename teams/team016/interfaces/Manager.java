@@ -1,9 +1,9 @@
-package team004.interfaces;
+package team016.interfaces;
 
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
-import team004.common.RobotState;
+import team016.common.RobotState;
 
 public abstract class Manager {
     public abstract void move(RobotController rc) throws GameActionException;

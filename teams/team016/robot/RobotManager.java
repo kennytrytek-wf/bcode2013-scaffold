@@ -1,4 +1,4 @@
-package team004.robot;
+package team016.robot;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -15,11 +15,11 @@ import battlecode.common.RobotType;
 import battlecode.common.Robot;
 import battlecode.common.Team;
 
-import team004.common.Info;
-import team004.common.Radio;
-import team004.common.RobotState;
-import team004.interfaces.Manager;
-import team004.hq.HeadquartersManager;
+import team016.common.Info;
+import team016.common.Radio;
+import team016.common.RobotState;
+import team016.interfaces.Manager;
+import team016.hq.HeadquartersManager;
 
 
 public class RobotManager extends Manager {
@@ -30,6 +30,7 @@ public class RobotManager extends Manager {
     GameObject currentEnemy;
     boolean isCanary;
     Random rand;
+    int attackDir;
 
     public RobotManager(RobotController rc) throws GameActionException {
         this.initialize(rc);
@@ -41,6 +42,7 @@ public class RobotManager extends Manager {
         this.currentEnemy = null;
         this.isCanary = false;
         this.rand = new Random(rc.getRobot().getID());
+        this.attackDir = this.rand.nextInt(3);
     }
 
     public void move(RobotController rc) throws GameActionException {
@@ -75,19 +77,17 @@ public class RobotManager extends Manager {
             if (this.roundsInSameLoc > 10) {
                 defuse = this.rand.nextInt(15) == 1;
             }
-            this.attack(rc, enemyLoc, defuse);
-        } else if (this.shouldGather()) {
+            this.attack(rc, enemyLoc, defuse, true);
+        } else if (this.shouldGather() && !(this.info.round > 200 && this.info.teamPower < 150)) {
             rc.setIndicatorString(0, "Gathering at round " + this.info.round + ". Gather point: (" + this.info.gatherPoint.x + ", " + this.info.gatherPoint.y + ")");
             this.gather(rc);
         } else {
             rc.setIndicatorString(0, ". Attacking at round " + this.info.round + ". Enemy HQ: (" + this.info.enemyHQLoc.x + ", " + this.info.enemyHQLoc.y + ")");
-            this.attack(rc, this.info.enemyHQLoc, true);
+            this.attack(rc, this.info.enemyHQLoc, true, false);
         }
     }
 
     private boolean shouldGather() {
-        //return this.info.round < 250;
-        //return true;
         return (this.info.round/250) % 2 == 0;
     }
 
@@ -116,12 +116,16 @@ public class RobotManager extends Manager {
     private boolean establishOutpost(RobotController rc) throws GameActionException {
         MapLocation outpost = Radio.readLocation(rc, Radio.OUTPOST);
         boolean onEncampment = rc.senseEncampmentSquare(this.myLoc);
-        if (onEncampment && (this.myLoc.x + 1 == rc.getMapWidth() || this.myLoc.y + 1 == rc.getMapHeight())) {
-            onEncampment = false;
-        }
+        boolean onOutpostEncampment = (
+            onEncampment && !(
+                this.myLoc.x + 1 == rc.getMapWidth() ||
+                this.myLoc.y + 1 == rc.getMapHeight() ||
+                this.myLoc.x == 0 ||
+                this.myLoc.y == 0)
+        );
         int deltaDistance = 9999;
         if (outpost != null) {
-            if (onEncampment) {
+            if (onOutpostEncampment) {
                 int origOutpostDistance = this.info.distance(outpost, this.info.myHQLoc);
                 int newOutpostDistance = this.info.distance(this.myLoc, this.info.myHQLoc);
                 deltaDistance = newOutpostDistance - origOutpostDistance;
@@ -150,15 +154,22 @@ public class RobotManager extends Manager {
         }
         if (onEncampment) {
             if (this.info.distance(this.myLoc, this.info.myHQLoc) > 5) {
-                Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
-                switch (this.rand.nextInt(4)) {
-                    case 0:
-                    case 1:
-                    case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
-                    case 3: rc.captureEncampment(RobotType.MEDBAY); break;
-                    //case 4: rc.captureEncampment(RobotType.GENERATOR); break;
+                if (this.info.teamPower < 150) {
+                    rc.captureEncampment(RobotType.GENERATOR);
+                    return true;
+                } else if (this.info.teamPower > 500) {
+                    rc.captureEncampment(RobotType.SUPPLIER);
                 }
-                return true;
+                if (onOutpostEncampment) {
+                    Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
+                    switch (this.rand.nextInt(4)) {
+                        case 0:
+                        case 1:
+                        case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
+                        case 3: rc.captureEncampment(RobotType.MEDBAY); break;
+                    }
+                    return true;
+                }
             }
         }
         return false;
@@ -221,18 +232,83 @@ public class RobotManager extends Manager {
         };
     }
 
+    private boolean hasEnemyMine(RobotController rc, MapLocation target) {
+        Team mineTeamOwner = rc.senseMine(target);
+        return ((mineTeamOwner != null) && (mineTeamOwner != this.info.myTeam));
+    }
+
+    private Direction getAttackDirection(RobotController rc, MapLocation target, Direction preferredDir) {
+        //Get distance between me and enemy
+        int distanceToEnemy = this.info.distance(this.myLoc, target);
+        //If distance > 2, find any direction toward enemy
+        Direction[] attackDirOptions = {
+            preferredDir,
+            preferredDir.rotateRight(),
+            preferredDir.rotateLeft(),
+            preferredDir.rotateRight().rotateRight(),
+            preferredDir.rotateLeft().rotateLeft()
+        };
+        Direction retreatDir = this.myLoc.directionTo(this.info.myHQLoc);
+        Direction[] retreatDirOptions = {
+            retreatDir,
+            retreatDir.rotateRight(),
+            retreatDir.rotateLeft(),
+            retreatDir.rotateRight().rotateRight(),
+            retreatDir.rotateLeft().rotateLeft()
+        };
+        if (distanceToEnemy > 2) {
+            for (int i=0; i < attackDirOptions.length; i++) {
+                Direction dir = attackDirOptions[i];
+                MapLocation nextLoc = this.myLoc.add(dir);
+                if (rc.canMove(dir) && !this.hasEnemyMine(rc, nextLoc)) {
+                    return dir;
+                }
+            }
+            return null;
+        }
+        //If distance == 2, determine if I have enough friends to attack. If not, retreat.
+        if (distanceToEnemy == 2) {
+            MapLocation senseLoc = this.myLoc.add(attackDirOptions[0]);
+            GameObject[] go = rc.senseNearbyGameObjects(
+                Robot.class, senseLoc, 4, this.info.myTeam);
+
+            if (go.length > 1) {
+                for (int i=0; i < attackDirOptions.length; i++) {
+                    Direction dir = attackDirOptions[i];
+                    MapLocation nextLoc = this.myLoc.add(dir);
+                    if (rc.canMove(dir) && !this.hasEnemyMine(rc, nextLoc)) {
+                        return dir;
+                    }
+                }
+                return null;
+            } else {
+                for (int i=0; i < retreatDirOptions.length; i++) {
+                    Direction dir = retreatDirOptions[i];
+                    MapLocation nextLoc = this.myLoc.add(dir);
+                    if (rc.canMove(dir) && !this.hasEnemyMine(rc, nextLoc)) {
+                        return dir;
+                    }
+                }
+            }
+        }
+        //If distance == 1, determine if I have enough friends to attack. If not, retreat toward outpost or HQ. If so, attack.
+        //If distance == 0, continue the attack
+        return null;
+    }
+
     private void gather(RobotController rc) throws GameActionException {
         int distanceFromGather = this.info.distance(this.myLoc, this.info.gatherPoint);
         int distanceFromHQ = this.info.distance(this.myLoc, this.info.myHQLoc);
         if (distanceFromHQ > 5) {
             if (distanceFromGather < 2) {
+                //rc.layMine();
                 return;
             }
         }
-        this.attack(rc, this.info.gatherPoint, true);
+        this.attack(rc, this.info.gatherPoint, true, false);
     }
 
-    private void attack(RobotController rc, MapLocation target, boolean defuseMines) throws GameActionException {
+    private void attack(RobotController rc, MapLocation target, boolean defuseMines, boolean enemySighted) throws GameActionException {
         Direction[] dirArray = this.getDirectionsTo(target);
         boolean defuse = false;
         boolean canMove = false;
@@ -241,22 +317,30 @@ public class RobotManager extends Manager {
         for (int i=0; i < dirArray.length; i++) {
             nextDir = dirArray[i];
             nextLoc = this.myLoc.add(nextDir);
-            Team mineTeamOwner = rc.senseMine(nextLoc);
-            if ((mineTeamOwner != null) && (
-                    mineTeamOwner != this.info.myTeam)) {
-                if (!canMove && defuseMines) {
-                    defuse = true;
+            if (this.hasEnemyMine(rc, nextLoc)) {
+                defuse = (!canMove && defuseMines);
+            }
+            else {
+                if (enemySighted) {
+                    nextDir = this.getAttackDirection(rc, target, nextDir);
+                    canMove = true;
+                    defuse = false;
+                    break;
+                } else if (rc.canMove(nextDir)) {
+                    canMove = true;
+                    defuse = false;
+                    break;
                 }
-            } else if (rc.canMove(nextDir)) {
-                canMove = true;
-                defuse = false;
-                break;
             }
         }
         if (defuse) {
             rc.defuseMine(nextLoc);
         } else if (canMove) {
             rc.move(nextDir);
+        } else {
+            if (rc.senseNearbyGameObjects(Robot.class, this.myLoc, 33*33, this.info.opponent).length == 0) {
+                rc.layMine();
+            }
         }
     }
 }

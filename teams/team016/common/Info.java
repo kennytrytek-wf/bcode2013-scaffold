@@ -1,4 +1,4 @@
-package team004.common;
+package team016.common;
 
 import battlecode.common.Clock;
 import battlecode.common.GameActionException;
@@ -8,6 +8,7 @@ import battlecode.common.Team;
 
 public class Info {
     public static int round;
+    public static double teamPower;
     public static MapLocation enemyHQLoc;
     public static MapLocation myHQLoc;
     public static Team myTeam;
@@ -21,6 +22,7 @@ public class Info {
 
     private void initialize(RobotController rc) throws GameActionException {
         this.round = Clock.getRoundNum() - 1;
+        this.teamPower = rc.getTeamPower();
         this.enemyHQLoc = rc.senseEnemyHQLocation();
         this.myHQLoc = rc.senseHQLocation();
         this.myTeam = rc.getTeam();
@@ -31,6 +33,7 @@ public class Info {
 
     public void update(RobotController rc) {
         this.round += 1;
+        this.teamPower = rc.getTeamPower();
         this.gatherPoint = this.calculateGatherPoint(rc);
     }
 

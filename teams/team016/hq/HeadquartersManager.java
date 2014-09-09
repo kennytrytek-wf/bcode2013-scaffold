@@ -1,4 +1,4 @@
-package team004.hq;
+package team016.hq;
 
 import java.util.Random;
 
@@ -12,9 +12,9 @@ import battlecode.common.RobotController;
 import battlecode.common.Team;
 import battlecode.common.Upgrade;
 
-import team004.interfaces.Manager;
-import team004.common.Info;
-import team004.common.Radio;
+import team016.interfaces.Manager;
+import team016.common.Info;
+import team016.common.Radio;
 
 public class HeadquartersManager extends Manager {
     Info info;
@@ -39,9 +39,11 @@ public class HeadquartersManager extends Manager {
         this.info.update(rc);
         this.signalIfEnemies(rc);
         if (rc.isActive()) {
-            if ((this.info.round > 200) && (this.fusionResearch > 0) && (rc.getTeamPower() < 100)) {
+            if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 100)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
+            } else if ((this.info.round > 250) && (this.info.teamPower < 100)) {
+                rc.researchUpgrade(Upgrade.NUKE);
             } else {
                 this.spawn(rc);
             }
