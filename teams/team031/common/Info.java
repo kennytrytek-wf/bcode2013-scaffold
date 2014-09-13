@@ -1,6 +1,7 @@
 package team031.common;
 
 import battlecode.common.Clock;
+import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
@@ -45,16 +46,33 @@ public class Info {
         return ((int) Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)));
     }
 
-    public MapLocation locationBetween(MapLocation start, MapLocation end, double percentDistance, RobotController rc) {
-        double rawX = (end.x - start.x) * percentDistance;
-        double rawY = (end.y - start.y) * percentDistance;
-        double incrX = Math.copySign(Math.sqrt(Math.abs(rawX)), rawX);
-        double incrY = Math.copySign(Math.sqrt(Math.abs(rawY)), rawY);
-        int endX = start.x + this.calcIncr(incrX);
-        int endY = start.y + this.calcIncr(incrY);
-        MapLocation point = new MapLocation(endX, endY);
-        rc.setIndicatorString(2, "gatherPoint: " + point + ", incrX: " + this.calcIncr(incrX) + ", incrY: " + this.calcIncr(incrY) + ", %: " + percentDistance);
-        return point;
+    private int[] calcDirIncrements(Direction dir) {
+        int xInc = 0;
+        int yInc = 0;
+        switch (dir) {
+            case EAST: xInc = 1; yInc = 0; break;
+            case SOUTH_EAST: xInc = 1; yInc = 1; break;
+            case SOUTH: xInc = 0; yInc = 1; break;
+            case SOUTH_WEST: xInc = -1; yInc = 1; break;
+            case WEST: xInc = -1; yInc = 0; break;
+            case NORTH_WEST: xInc = -1; yInc = -1; break;
+            case NORTH: xInc = 0; yInc = -1; break;
+            case NORTH_EAST: xInc = 1; yInc = -1; break;
+        }
+        return new int[]{xInc, yInc};
+    }
+
+    public MapLocation locationInDir(MapLocation start, Direction dir, int distance, int offset) {
+        int[] incrs = this.calcDirIncrements(dir);
+        MapLocation distLoc = new MapLocation(start.x + incrs[0] * distance, start.y + incrs[1] * distance);
+        if (offset == 0) {
+            return distLoc;
+        } else if (offset > 0) {
+            incrs = this.calcDirIncrements(dir.rotateRight().rotateRight());
+        } else {
+            incrs = this.calcDirIncrements(dir.rotateLeft().rotateLeft());
+        }
+        return new MapLocation(distLoc.x + incrs[0] * offset, distLoc.y + incrs[1] * offset);
     }
 
     private int calcIncr(double incr) {
@@ -69,6 +87,8 @@ public class Info {
         if (this.strategicPoint != null) {
             return this.strategicPoint;
         }
-        return this.locationBetween(this.myHQLoc, this.enemyHQLoc, 0.75, rc);
+        Direction enemyDir = this.myHQLoc.directionTo(this.enemyHQLoc);
+        int enemyDistance = this.distance(this.myHQLoc, this.enemyHQLoc);
+        return this.locationInDir(this.myHQLoc, enemyDir, (int) (enemyDistance * 0.25), 0);
     }
 }

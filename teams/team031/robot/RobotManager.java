@@ -138,14 +138,7 @@ public class RobotManager extends Manager {
             } catch (GameActionException e) {
             }
             if (outpostExists && (deltaDistance >= 0 || deltaDistance == 9999)) {
-                if (this.info.distance(outpost, this.info.myHQLoc) > 10) {
-                    this.info.strategicPoint = outpost;
-                    //this.info.locationBetween(
-                    //    this.info.myHQLoc, outpost, 0.40, rc);
-                } else {
-                    this.info.strategicPoint = outpost;
-                }
-
+                this.info.strategicPoint = outpost;
                 return false;
             } else {
                 Radio.writeLocation(rc, Radio.OUTPOST, new MapLocation(0, 0));
@@ -155,10 +148,19 @@ public class RobotManager extends Manager {
         if (onEncampment) {
             if (this.info.distance(this.myLoc, this.info.myHQLoc) > 5) {
                 if (this.info.teamPower < 150) {
-                    rc.captureEncampment(RobotType.GENERATOR);
+                    switch (this.rand.nextInt(3)) {
+                        case 0:
+                        case 1: rc.captureEncampment(RobotType.ARTILLERY); break;
+                        case 2: rc.captureEncampment(RobotType.GENERATOR); break;
+                    }
                     return true;
                 } else if (this.info.teamPower > 500) {
-                    rc.captureEncampment(RobotType.SUPPLIER);
+                    switch (this.rand.nextInt(3)) {
+                        case 0:
+                        case 1: rc.captureEncampment(RobotType.ARTILLERY); break;
+                        case 2: rc.captureEncampment(RobotType.SUPPLIER); break;
+                    }
+                    return true;
                 }
                 if (onOutpostEncampment) {
                     Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
@@ -188,9 +190,6 @@ public class RobotManager extends Manager {
         }
         if (enemy == null) {
             MapLocation senseLoc = this.myLoc;
-            if (this.shouldGather()) {
-                senseLoc = this.info.gatherPoint;
-            }
             GameObject[] go = rc.senseNearbyGameObjects(
                 Robot.class, senseLoc, 33 * 33, this.info.opponent);
 
@@ -223,8 +222,36 @@ public class RobotManager extends Manager {
         }
     }
 
-    private Direction[] getDirectionsTo(MapLocation target) throws GameActionException {
+    private Direction[] getDirectionsTo(RobotController rc, MapLocation target) throws GameActionException {
         Direction targetDir = this.myLoc.directionTo(target);
+        Direction[] dirLocs = new Direction[] {
+            targetDir,
+            targetDir.rotateRight(),
+            targetDir.rotateLeft()
+        };
+        MapLocation centerSenseLoc = this.info.locationInDir(this.myLoc, dirLocs[0], 4, 0);
+        int numCenter = (
+            rc.senseNearbyGameObjects(Robot.class, centerSenseLoc, 5 * 5, this.info.opponent).length +
+            rc.senseNonAlliedMineLocations(centerSenseLoc, 4 * 4).length);
+
+        MapLocation rightSenseLoc = this.info.locationInDir(this.myLoc, dirLocs[1], 4, 4);
+        int numRight = (
+            rc.senseNearbyGameObjects(Robot.class, rightSenseLoc, 5 * 5, this.info.opponent).length +
+            rc.senseNonAlliedMineLocations(rightSenseLoc, 4 * 4).length);
+
+        MapLocation leftSenseLoc = this.info.locationInDir(this.myLoc, dirLocs[2], 4, -4);
+        int numLeft = (
+            rc.senseNearbyGameObjects(Robot.class, leftSenseLoc, 5 * 5, this.info.opponent).length +
+            rc.senseNonAlliedMineLocations(leftSenseLoc, 4 * 4).length);
+
+        int min = 999;
+        int[] counts = {numCenter, numRight, numLeft};
+        for (int i=0; i < counts.length; i++) {
+            if (counts[i] < min) {
+                min = counts[i];
+                targetDir = dirLocs[i];
+            }
+        }
         return new Direction[]{
             targetDir,
             targetDir.rotateLeft(),
@@ -309,7 +336,7 @@ public class RobotManager extends Manager {
     }
 
     private void attack(RobotController rc, MapLocation target, boolean defuseMines, boolean enemySighted) throws GameActionException {
-        Direction[] dirArray = this.getDirectionsTo(target);
+        Direction[] dirArray = this.getDirectionsTo(rc, target);
         boolean defuse = false;
         boolean canMove = false;
         Direction nextDir = null;
