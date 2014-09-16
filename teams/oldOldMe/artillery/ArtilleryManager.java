@@ -1,4 +1,4 @@
-package team031.artillery;
+package oldOldMe.artillery;
 
 import java.util.Random;
 
@@ -10,9 +10,9 @@ import battlecode.common.Robot;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
 
-import team031.interfaces.Manager;
-import team031.common.RobotState;
-import team031.common.MapInfo;
+import oldOldMe.interfaces.Manager;
+import oldOldMe.common.RobotState;
+import oldOldMe.common.MapInfo;
 
 public class ArtilleryManager extends Manager {
     public RobotState createRobotState(RobotController rc) {
@@ -23,13 +23,9 @@ public class ArtilleryManager extends Manager {
         if (rc.isActive()) {
             MapLocation loc = rc.getLocation();
             Team myTeam = rc.getTeam();
-            GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 33 * 33, myTeam.opponent());
-            for (int i=0; i < go.length; i++) {
-                MapLocation attackLoc = rc.senseLocationOf(go[i]);
-                if (rc.canAttackSquare(attackLoc)) {
-                    rc.attackSquare(attackLoc);
-                    break;
-                }
+            GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 100, myTeam.opponent());
+            if (go.length > 0) {
+                rc.attackSquare(rc.senseLocationOf(go[0]));
             }
         }
     }

@@ -19,7 +19,6 @@ import team031.common.Radio;
 public class HeadquartersManager extends Manager {
     Info info;
     Random rand;
-    int visionResearch;
     int fusionResearch;
     boolean init = false;
 
@@ -30,19 +29,22 @@ public class HeadquartersManager extends Manager {
     private void initialize(RobotController rc) throws GameActionException {
         this.info = new Info(rc);
         this.rand = new Random(rc.getRobot().getID());
-        this.visionResearch = 25;
         this.fusionResearch = 25;
         this.init = true;
     }
 
     public void move(RobotController rc) throws GameActionException {
         this.info.update(rc);
+        Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
         if (rc.isActive()) {
-            if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 100)) {
+            if (this.info.round > 1500) {
+                rc.researchUpgrade(Upgrade.NUKE);
+            }
+            if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
-            } else if ((this.info.round > 250) && (this.info.teamPower < 100)) {
+            } else if ((this.info.round > 250) && (this.info.teamPower < 150)) {
                 rc.researchUpgrade(Upgrade.NUKE);
             } else {
                 this.spawn(rc);

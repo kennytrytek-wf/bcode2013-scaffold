@@ -28,9 +28,10 @@ public class RobotManager extends Manager {
     MapLocation myPreviousLoc;
     int roundsInSameLoc;
     GameObject currentEnemy;
-    boolean isCanary;
     Random rand;
     int attackDir;
+    int maxEncampments;
+    int numEncampments;
 
     public RobotManager(RobotController rc) throws GameActionException {
         this.initialize(rc);
@@ -38,20 +39,24 @@ public class RobotManager extends Manager {
 
     private void initialize(RobotController rc) throws GameActionException {
         this.info = new Info(rc);
+        this.myLoc = rc.getLocation();
+        this.myPreviousLoc = this.myLoc;
         this.roundsInSameLoc = 0;
         this.currentEnemy = null;
-        this.isCanary = false;
         this.rand = new Random(rc.getRobot().getID());
         this.attackDir = this.rand.nextInt(3);
+        this.maxEncampments = 15;
+        this.numEncampments = 0;
     }
 
     public void move(RobotController rc) throws GameActionException {
         this.info.update(rc);
-        this.myLoc = rc.getLocation();
-        if (this.establishCanary(rc)) {
+        if (!rc.isActive()) {
             return;
         }
+        this.myLoc = rc.getLocation();
         if (this.establishOutpost(rc)) {
+            this.numEncampments += 1;
             return;
         }
         if (this.myLoc == this.myPreviousLoc) {
@@ -60,57 +65,21 @@ public class RobotManager extends Manager {
             this.roundsInSameLoc = 0;
             this.myPreviousLoc = this.myLoc;
         }
-        MapLocation enemyLoc = this.getEnemyLocation(rc);
-        if ((this.shouldGather() && this.info.round > 400)) {
-            enemyLoc = null;
-            this.currentEnemy = null;
-        }
-        if (enemyLoc == null) {
-            enemyLoc = this.senseEnemy(rc);
-            if (enemyLoc == null) {
-                Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
-            }
-        }
-        if (enemyLoc != null) {
-            rc.setIndicatorString(0, "Found enemy. Attacking: (" + enemyLoc.x + ", " + enemyLoc.y + ")");
-            boolean defuse = false;
-            if (this.roundsInSameLoc > 10) {
-                defuse = this.rand.nextInt(15) == 1;
-            }
-            this.attack(rc, enemyLoc, defuse, true);
-        } else if (this.shouldGather() && !(this.info.round > 200 && this.info.teamPower < 150)) {
+        MapLocation movingTarget = null;
+        if (this.shouldGather(rc)) {
+            movingTarget = this.getEnemyOrFriend(rc, 0, this.info.gatherPoint);
             rc.setIndicatorString(0, "Gathering at round " + this.info.round + ". Gather point: (" + this.info.gatherPoint.x + ", " + this.info.gatherPoint.y + ")");
-            this.gather(rc);
         } else {
-            rc.setIndicatorString(0, ". Attacking at round " + this.info.round + ". Enemy HQ: (" + this.info.enemyHQLoc.x + ", " + this.info.enemyHQLoc.y + ")");
-            this.attack(rc, this.info.enemyHQLoc, true, false);
+            movingTarget = this.getEnemyOrFriend(rc, 2, null);
         }
+        this.attack(rc, movingTarget, this.roundsInSameLoc > 3, true);
     }
 
-    private boolean shouldGather() {
-        return (this.info.round/250) % 2 == 0;
-    }
+    private boolean shouldGather(RobotController rc) throws GameActionException {
+        //GameObject[] friends = rc.senseNearbyGameObjects(
+        //    Robot.class, this.myLoc, 4 * 4, this.info.myTeam);
 
-    private boolean establishCanary(RobotController rc) throws GameActionException {
-        if ((!this.isCanary) && (this.info.distance(this.myLoc, this.info.myHQLoc) < 3)) {
-            if (!Radio.readStatus(rc, Radio.CANARY)) {
-                this.isCanary = true;
-                Radio.writeStatus(rc, Radio.CANARY, true);
-                rc.setIndicatorString(1, "I've become the canary.");
-            }
-        }
-        if (this.isCanary) {
-            this.gather(rc);
-            MapLocation enemyLoc = this.senseEnemy(rc);
-            if (enemyLoc != null) {
-                this.isCanary = false;
-                Radio.writeStatus(rc, Radio.CANARY, false);
-                Radio.writeLocation(rc, Radio.ENEMY, enemyLoc);
-                rc.setIndicatorString(1, "No longer the canary.");
-            }
-            return true;
-        }
-        return false;
+        return ((this.info.round/250) % 2 == 0);
     }
 
     private boolean establishOutpost(RobotController rc) throws GameActionException {
@@ -145,36 +114,74 @@ public class RobotManager extends Manager {
                 this.info.strategicPoint = null;
             }
         }
-        if (onEncampment) {
-            if (this.info.distance(this.myLoc, this.info.myHQLoc) > 5) {
+        if (onEncampment && this.numEncampments < this.maxEncampments) {
+            if (this.info.distance(this.myLoc, this.info.myHQLoc) > 3) {
                 if (this.info.teamPower < 150) {
                     switch (this.rand.nextInt(3)) {
                         case 0:
                         case 1: rc.captureEncampment(RobotType.ARTILLERY); break;
                         case 2: rc.captureEncampment(RobotType.GENERATOR); break;
                     }
-                    return true;
                 } else if (this.info.teamPower > 500) {
-                    switch (this.rand.nextInt(3)) {
-                        case 0:
-                        case 1: rc.captureEncampment(RobotType.ARTILLERY); break;
-                        case 2: rc.captureEncampment(RobotType.SUPPLIER); break;
+                    switch (this.rand.nextInt(2)) {
+                        case 0: rc.captureEncampment(RobotType.ARTILLERY); break;
+                        case 1: rc.captureEncampment(RobotType.SUPPLIER); break;
                     }
-                    return true;
-                }
-                if (onOutpostEncampment) {
-                    Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
+                } else {
                     switch (this.rand.nextInt(4)) {
                         case 0:
                         case 1:
                         case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
                         case 3: rc.captureEncampment(RobotType.MEDBAY); break;
                     }
-                    return true;
                 }
+                if (onOutpostEncampment) {
+                    Radio.writeLocation(rc, Radio.OUTPOST, this.myLoc);
+                }
+                return true;
             }
         }
         return false;
+    }
+
+    private MapLocation getEnemyOrFriend(RobotController rc, int minimumFriends, MapLocation defaultLocation) throws GameActionException {
+        GameObject[] friends = rc.senseNearbyGameObjects(
+            Robot.class, this.myLoc, 4 * 4, this.info.myTeam);
+
+        GameObject[] enemies = rc.senseNearbyGameObjects(
+            Robot.class, this.myLoc, 4 * 4, this.info.opponent);
+
+        GameObject[] arr = null;
+        MapLocation defaultLoc = defaultLocation;
+        if ((friends.length > enemies.length) && (friends.length > minimumFriends)) {
+            MapLocation publicEnemy = Radio.readLocation(rc, Radio.ENEMY);
+            if (publicEnemy != null) {
+                return publicEnemy;
+            }
+            arr = enemies;
+            if (defaultLoc == null) {
+                defaultLoc = this.info.enemyHQLoc;
+            }
+            rc.setIndicatorString(1, "Found enemy. Attacking. Friends: " + friends.length + ", Enemies: " + enemies.length);
+        } else {
+            arr = friends;
+            if (defaultLoc == null) {
+                defaultLoc = this.info.myHQLoc;
+            }
+            rc.setIndicatorString(1, "Need more friends! Friends: " + friends.length + ", Enemies: " + enemies.length);
+        }
+        MapLocation closest = defaultLoc;
+        int minDistance = 999;
+        for (int i=0; i < arr.length; i++) {
+            MapLocation robotLoc = rc.senseLocationOf(arr[i]);
+            int distance = this.info.distance(this.myLoc, robotLoc);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = robotLoc;
+            }
+        }
+        Radio.writeLocation(rc, Radio.ENEMY, closest);
+        return closest;
     }
 
     private MapLocation senseEnemy(RobotController rc) throws GameActionException {
@@ -272,16 +279,16 @@ public class RobotManager extends Manager {
             preferredDir,
             preferredDir.rotateRight(),
             preferredDir.rotateLeft(),
-            preferredDir.rotateRight().rotateRight(),
-            preferredDir.rotateLeft().rotateLeft()
+            //preferredDir.rotateRight().rotateRight(),
+            //preferredDir.rotateLeft().rotateLeft()
         };
         Direction retreatDir = this.myLoc.directionTo(this.info.myHQLoc);
         Direction[] retreatDirOptions = {
             retreatDir,
             retreatDir.rotateRight(),
             retreatDir.rotateLeft(),
-            retreatDir.rotateRight().rotateRight(),
-            retreatDir.rotateLeft().rotateLeft()
+            //retreatDir.rotateRight().rotateRight(),
+            //retreatDir.rotateLeft().rotateLeft()
         };
         if (distanceToEnemy > 2) {
             for (int i=0; i < attackDirOptions.length; i++) {
@@ -291,13 +298,13 @@ public class RobotManager extends Manager {
                     return dir;
                 }
             }
-            return null;
+            return attackDirOptions[0];
         }
         //If distance == 2, determine if I have enough friends to attack. If not, retreat.
-        if (distanceToEnemy == 2) {
+        else {
             MapLocation senseLoc = this.myLoc.add(attackDirOptions[0]);
             GameObject[] go = rc.senseNearbyGameObjects(
-                Robot.class, senseLoc, 4, this.info.myTeam);
+                Robot.class, senseLoc, 2, this.info.myTeam);
 
             if (go.length > 1) {
                 for (int i=0; i < attackDirOptions.length; i++) {
@@ -307,7 +314,7 @@ public class RobotManager extends Manager {
                         return dir;
                     }
                 }
-                return null;
+                return attackDirOptions[0];
             } else {
                 for (int i=0; i < retreatDirOptions.length; i++) {
                     Direction dir = retreatDirOptions[i];
@@ -316,22 +323,15 @@ public class RobotManager extends Manager {
                         return dir;
                     }
                 }
+                return retreatDirOptions[0];
             }
         }
         //If distance == 1, determine if I have enough friends to attack. If not, retreat toward outpost or HQ. If so, attack.
         //If distance == 0, continue the attack
-        return null;
+        //return null;
     }
 
     private void gather(RobotController rc) throws GameActionException {
-        int distanceFromGather = this.info.distance(this.myLoc, this.info.gatherPoint);
-        int distanceFromHQ = this.info.distance(this.myLoc, this.info.myHQLoc);
-        if (distanceFromHQ > 5) {
-            if (distanceFromGather < 2) {
-                //rc.layMine();
-                return;
-            }
-        }
         this.attack(rc, this.info.gatherPoint, true, false);
     }
 
@@ -339,8 +339,8 @@ public class RobotManager extends Manager {
         Direction[] dirArray = this.getDirectionsTo(rc, target);
         boolean defuse = false;
         boolean canMove = false;
-        Direction nextDir = null;
-        MapLocation nextLoc = null;
+        Direction nextDir = dirArray[0];
+        MapLocation nextLoc = this.myLoc.add(nextDir);
         for (int i=0; i < dirArray.length; i++) {
             nextDir = dirArray[i];
             nextLoc = this.myLoc.add(nextDir);
@@ -350,9 +350,18 @@ public class RobotManager extends Manager {
             else {
                 if (enemySighted) {
                     nextDir = this.getAttackDirection(rc, target, nextDir);
-                    canMove = true;
-                    defuse = false;
-                    break;
+                    nextLoc = this.myLoc.add(nextDir);
+                    if (this.hasEnemyMine(rc, nextLoc)) {
+                        defuse = defuseMines;
+                        canMove = false;
+                        continue;
+                    } else {
+                        canMove = rc.canMove(nextDir);
+                        defuse = false;
+                    }
+                    if (canMove) {
+                        break;
+                    }
                 } else if (rc.canMove(nextDir)) {
                     canMove = true;
                     defuse = false;
@@ -364,10 +373,6 @@ public class RobotManager extends Manager {
             rc.defuseMine(nextLoc);
         } else if (canMove) {
             rc.move(nextDir);
-        } else {
-            if (rc.senseNearbyGameObjects(Robot.class, this.myLoc, 33*33, this.info.opponent).length == 0) {
-                //rc.layMine();
-            }
         }
     }
 }
