@@ -125,10 +125,7 @@ public class RobotManager extends Manager {
                         case 2: rc.captureEncampment(RobotType.GENERATOR); break;
                     }
                 } else if (this.info.teamPower > 500) {
-                    switch (this.rand.nextInt(2)) {
-                        case 0: rc.captureEncampment(RobotType.ARTILLERY); break;
-                        case 1: rc.captureEncampment(RobotType.SUPPLIER); break;
-                    }
+                    rc.captureEncampment(RobotType.SUPPLIER);
                 } else {
                     switch (this.rand.nextInt(4)) {
                         case 0:
