@@ -16,6 +16,8 @@ public class Info {
     public static Team opponent;
     public static MapLocation gatherPoint;
     public static MapLocation strategicPoint;
+    public static int mapHeight;
+    public static int mapWidth;
 
     public Info(RobotController rc) throws GameActionException {
         this.initialize(rc);
@@ -30,6 +32,8 @@ public class Info {
         this.opponent = this.myTeam.opponent();
         this.gatherPoint = this.calculateGatherPoint(rc);
         this.strategicPoint = null;
+        this.mapHeight = rc.getMapHeight();
+        this.mapWidth = rc.getMapWidth();
     }
 
     public void update(RobotController rc) {
