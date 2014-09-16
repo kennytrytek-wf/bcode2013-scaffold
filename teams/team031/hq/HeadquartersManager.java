@@ -38,9 +38,6 @@ public class HeadquartersManager extends Manager {
         Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
         if (rc.isActive()) {
-            if (this.info.round > 1750) {
-                rc.researchUpgrade(Upgrade.NUKE);
-            }
             if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
