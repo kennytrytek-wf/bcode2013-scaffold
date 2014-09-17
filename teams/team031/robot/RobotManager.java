@@ -125,13 +125,15 @@ public class RobotManager extends Manager {
                         case 2: rc.captureEncampment(RobotType.GENERATOR); break;
                     }
                 } else if (this.info.teamPower > 500) {
-                    rc.captureEncampment(RobotType.SUPPLIER);
+                    switch (this.rand.nextInt(2)) {
+                        case 0: rc.captureEncampment(RobotType.GENERATOR); break;
+                        case 1: rc.captureEncampment(RobotType.SUPPLIER); break;
+                    }
                 } else {
-                    switch (this.rand.nextInt(4)) {
+                    switch (this.rand.nextInt(3)) {
                         case 0:
-                        case 1:
-                        case 2: rc.captureEncampment(RobotType.ARTILLERY); break;
-                        case 3: rc.captureEncampment(RobotType.MEDBAY); break;
+                        case 1: rc.captureEncampment(RobotType.ARTILLERY); break;
+                        case 2: rc.captureEncampment(RobotType.MEDBAY); break;
                     }
                 }
                 if (onOutpostEncampment) {
@@ -144,6 +146,9 @@ public class RobotManager extends Manager {
     }
 
     private MapLocation getEnemyOrFriend(RobotController rc, int minimumFriends, MapLocation defaultLocation) throws GameActionException {
+        if (Radio.readStatus(rc, Radio.NUKE_TIME) && (this.info.distance(this.myLoc, this.info.myHQLoc) > 10)) {
+            return this.info.myHQLoc;
+        }
         GameObject[] friends = rc.senseNearbyGameObjects(
             Robot.class, this.myLoc, 4 * 4, this.info.myTeam);
 

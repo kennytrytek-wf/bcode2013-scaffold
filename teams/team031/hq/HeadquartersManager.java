@@ -20,6 +20,7 @@ public class HeadquartersManager extends Manager {
     Info info;
     Random rand;
     int fusionResearch;
+    int nukeResearch;
     boolean init = false;
 
     public HeadquartersManager(RobotController rc) throws GameActionException {
@@ -30,6 +31,7 @@ public class HeadquartersManager extends Manager {
         this.info = new Info(rc);
         this.rand = new Random(rc.getRobot().getID());
         this.fusionResearch = 25;
+        this.nukeResearch = 400;
         this.init = true;
     }
 
@@ -38,10 +40,15 @@ public class HeadquartersManager extends Manager {
         Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
         if (rc.isActive()) {
+            if (nukeResearch < 100) {
+                Radio.writeStatus(rc, Radio.NUKE_TIME, true);
+                rc.researchUpgrade(Upgrade.NUKE);
+                return;
+            }
             if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
-            } else if ((this.info.round > 250) && (this.info.teamPower < 150)) {
+            } else if ((this.fusionResearch == 0) && (this.info.teamPower < 250)) {
                 rc.researchUpgrade(Upgrade.NUKE);
             } else {
                 this.spawn(rc);

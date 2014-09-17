@@ -8,12 +8,14 @@ public class Radio {
     public static final int ENEMY = 0;
     public static final int CANARY = 1;
     public static final int OUTPOST = 2;
+    public static final int NUKE_TIME = 3;
 
     private static int getBroadcastChannel(int purpose) {
         switch(purpose) {
             case Radio.ENEMY: return 58293;
             case Radio.CANARY: return 57487;
             case Radio.OUTPOST: return 25998;
+            case Radio.NUKE_TIME: return 34986;
             default: return 58293;
         }
     }
