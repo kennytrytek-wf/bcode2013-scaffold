@@ -31,6 +31,7 @@ public class RobotManager extends Manager {
     Random rand;
     int maxEncampments;
     boolean laidMineLastRound;
+    double initialEnergon;
 
     public RobotManager(RobotController rc) throws GameActionException {
         this.initialize(rc);
@@ -45,6 +46,7 @@ public class RobotManager extends Manager {
         this.rand = new Random(rc.getRobot().getID());
         this.maxEncampments = 15;
         this.laidMineLastRound = false;
+        this.initialEnergon = rc.getEnergon();
     }
 
     public void move(RobotController rc) throws GameActionException {
@@ -64,6 +66,45 @@ public class RobotManager extends Manager {
     }
 
     private void nuke(RobotController rc) throws GameActionException {
+        MapLocation medbay = Radio.readLocation(rc, Radio.MEDBAY);
+        if (medbay == null) {
+            MapLocation[] encampments = rc.senseEncampmentSquares(
+                this.info.myHQLoc, 5 * 5, null);
+
+            MapLocation closest = null;
+            int minDistance = 999;
+            for (int i=0; i < encampments.length; i++) {
+                MapLocation encampment = encampments[i];
+                int distance = this.info.distance(encampment, this.info.myHQLoc);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closest = encampment;
+                }
+            }
+            if (closest != null) {
+                if (closest.equals(this.myLoc)) {
+                    rc.captureEncampment(RobotType.MEDBAY);
+                    Radio.writeLocation(rc, Radio.MEDBAY, closest);
+                    return;
+                } else {
+                    if (this.layMine(rc)) {
+                        rc.setIndicatorString(0, "Laying mine...");
+                        return;
+                    }
+                    this.attack(rc, closest, false, true);
+                    return;
+                }
+            }
+        } else if (this.myLoc == medbay) {
+            //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
+            rc.captureEncampment(RobotType.MEDBAY);
+            return;
+        } else if (rc.getEnergon() < (this.initialEnergon / 1.5)) {
+            //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
+            this.attack(rc, medbay, false, true);
+            return;
+        }
+
         if (this.layMine(rc)) {
             rc.setIndicatorString(0, "Laying mine...");
             return;
@@ -315,6 +356,13 @@ public class RobotManager extends Manager {
         return ((mineTeamOwner != null) && (mineTeamOwner != this.info.myTeam));
     }
 
+    private boolean canMove(RobotController rc, Direction d) {
+        if (d == Direction.OMNI || d == Direction.NONE) {
+            return false;
+        }
+        return rc.canMove(d);
+    }
+
     private Direction getAttackDirection(RobotController rc, MapLocation target, Direction preferredDir) {
         //Get distance between me and enemy
         int distanceToEnemy = this.info.distance(this.myLoc, target);
@@ -353,7 +401,7 @@ public class RobotManager extends Manager {
                 for (int i=0; i < attackDirOptions.length; i++) {
                     Direction dir = attackDirOptions[i];
                     MapLocation nextLoc = this.myLoc.add(dir);
-                    if (rc.canMove(dir) && !this.hasEnemyMine(rc, nextLoc)) {
+                    if (this.canMove(rc, dir) && !this.hasEnemyMine(rc, nextLoc)) {
                         return dir;
                     }
                 }
@@ -362,7 +410,7 @@ public class RobotManager extends Manager {
                 for (int i=0; i < retreatDirOptions.length; i++) {
                     Direction dir = retreatDirOptions[i];
                     MapLocation nextLoc = this.myLoc.add(dir);
-                    if (rc.canMove(dir) && !this.hasEnemyMine(rc, nextLoc)) {
+                    if (this.canMove(rc, dir) && !this.hasEnemyMine(rc, nextLoc)) {
                         return dir;
                     }
                 }
@@ -395,13 +443,13 @@ public class RobotManager extends Manager {
                         canMove = false;
                         continue;
                     } else {
-                        canMove = rc.canMove(nextDir);
+                        canMove = this.canMove(rc, nextDir);
                         defuse = false;
                     }
                     if (canMove) {
                         break;
                     }
-                } else if (rc.canMove(nextDir)) {
+                } else if (this.canMove(rc, nextDir)) {
                     canMove = true;
                     defuse = false;
                     break;

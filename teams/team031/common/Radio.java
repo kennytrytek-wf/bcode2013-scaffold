@@ -9,7 +9,7 @@ public class Radio {
     public static final int ENEMY = 0;
     public static final int CANARY = 1;
     public static final int OUTPOST = 2;
-    public static final int UNUSED_CHANNEL = 3;
+    public static final int MEDBAY = 3;
     public static final int NUM_SOLDIERS = 4;
     public static final int NUM_ENCAMPMENTS = 5;
     public static final int STRATEGY = 6;
@@ -20,7 +20,7 @@ public class Radio {
             case Radio.ENEMY: channel = 58293; break;
             case Radio.CANARY: channel = 57487; break;
             case Radio.OUTPOST: channel = 25998; break;
-            case Radio.UNUSED_CHANNEL: channel = 34986; break;
+            case Radio.MEDBAY: channel = 34986; break;
             case Radio.NUM_SOLDIERS: channel = 33285; break;
             case Radio.NUM_ENCAMPMENTS: channel = 9975; break;
             case Radio.STRATEGY: channel = 47681; break;
