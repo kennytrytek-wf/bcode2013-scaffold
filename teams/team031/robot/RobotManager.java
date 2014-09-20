@@ -29,9 +29,7 @@ public class RobotManager extends Manager {
     int roundsInSameLoc;
     GameObject currentEnemy;
     Random rand;
-    int attackDir;
     int maxEncampments;
-    int numEncampments;
     boolean laidMineLastRound;
 
     public RobotManager(RobotController rc) throws GameActionException {
@@ -45,20 +43,75 @@ public class RobotManager extends Manager {
         this.roundsInSameLoc = 0;
         this.currentEnemy = null;
         this.rand = new Random(rc.getRobot().getID());
-        this.attackDir = this.rand.nextInt(3);
         this.maxEncampments = 15;
-        this.numEncampments = 0;
         this.laidMineLastRound = false;
     }
 
     public void move(RobotController rc) throws GameActionException {
         this.info.update(rc);
+        Radio.updateData(rc, Radio.NUM_SOLDIERS, 1);
         if (!rc.isActive()) {
             return;
         }
         this.myLoc = rc.getLocation();
+        int strategy = Radio.readOldData(rc, Radio.STRATEGY);
+        switch(strategy) {
+            case 0: this.rush(rc); break;
+            case 1: this.nuke(rc); break;
+            case 2: this.econ(rc); break;
+            default: this.rush(rc); break;
+        }
+    }
+
+    private void nuke(RobotController rc) throws GameActionException {
+        if (this.layMine(rc)) {
+            rc.setIndicatorString(0, "Laying mine...");
+            return;
+        }
+        MapLocation target = this.getEnemyOrFriend(rc, 0, this.getNextMineLoc(rc));
+        this.attack(rc, target, false, true);
+    }
+
+    private MapLocation getNextMineLoc(RobotController rc) throws GameActionException {
+        for (int i=2; i < 6; i+= 2) {
+            MapLocation origin = new MapLocation(
+                this.myLoc.x - i/2, this.myLoc.y - i/2);
+
+            int ox = origin.x;
+            int oy = origin.y;
+            for (int j=0; j < 4; j++) {
+                for(int k=1; k <= i; k++) {
+                    MapLocation checkLoc = null;
+                    switch(j) {
+                        case 0: checkLoc = new MapLocation(ox, oy + k); break;
+                        case 1: checkLoc = new MapLocation(ox + k, oy + i); break;
+                        case 2: checkLoc = new MapLocation(ox + i, oy + i - k); break;
+                        case 3: checkLoc = new MapLocation(ox + i - k, oy); break;
+                    }
+                    try {
+                        if (rc.senseMine(checkLoc) == null) {
+                            if (rc.senseObjectAtLocation(checkLoc) == null) {
+                                return checkLoc;
+                            }
+                        }
+                    } catch (GameActionException e) {
+                    }
+                }
+            }
+        }
+        return this.info.myHQLoc;
+    }
+
+    private void econ(RobotController rc) throws GameActionException {
+        this.rush(rc);
+    }
+
+    private void rush(RobotController rc) throws GameActionException {
+        if (Radio.readOldData(rc, Radio.NUM_SOLDIERS) < 12) {
+            this.nuke(rc);
+            return;
+        }
         if (this.establishOutpost(rc)) {
-            this.numEncampments += 1;
             return;
         }
         if (this.myLoc == this.myPreviousLoc) {
@@ -70,18 +123,26 @@ public class RobotManager extends Manager {
         MapLocation movingTarget = null;
         if (this.shouldGather(rc)) {
             if (this.layMine(rc)) {
+                rc.setIndicatorString(0, "Laying mine...");
                 return;
             }
             movingTarget = this.getEnemyOrFriend(rc, 0, this.info.gatherPoint);
-            rc.setIndicatorString(0, "Gathering at round " + this.info.round + ". Gather point: (" + this.info.gatherPoint.x + ", " + this.info.gatherPoint.y + ")");
+            if (movingTarget == this.info.gatherPoint) {
+                rc.setIndicatorString(0, "Gathering at round " + this.info.round + ". Gather point: (" + this.info.gatherPoint.x + ", " + this.info.gatherPoint.y + ")");
+            } else {
+                rc.setIndicatorString(0, "Found enemy: " + movingTarget);
+            }
         } else {
-            movingTarget = this.getEnemyOrFriend(rc, 2, null);
+            movingTarget = this.getEnemyOrFriend(rc, 2, this.info.enemyHQLoc);
+            rc.setIndicatorString(0, "Attacking: " + movingTarget);
         }
         this.attack(rc, movingTarget, this.roundsInSameLoc > 3, true);
     }
 
     private boolean shouldGather(RobotController rc) throws GameActionException {
-        return ((this.info.round/250) % 2 == 0);
+        int numSoldiers = Radio.readOldData(rc, Radio.NUM_SOLDIERS);
+        rc.setIndicatorString(1, "Num Soldiers: " + numSoldiers);
+        return numSoldiers < 12;
     }
 
     private boolean establishOutpost(RobotController rc) throws GameActionException {
@@ -116,7 +177,11 @@ public class RobotManager extends Manager {
                 this.info.strategicPoint = null;
             }
         }
-        if (onEncampment && this.numEncampments < this.maxEncampments) {
+        GameObject[] enemies = rc.senseNearbyGameObjects(
+            Robot.class, this.myLoc, 10 * 10, this.info.opponent);
+
+        int numEncampments = Radio.readOldData(rc, Radio.NUM_ENCAMPMENTS);
+        if (onEncampment && numEncampments < this.maxEncampments && enemies.length == 0) {
             if (this.info.distance(this.myLoc, this.info.myHQLoc) > 3) {
                 if (this.info.teamPower < 150) {
                     switch (this.rand.nextInt(3)) {
@@ -146,9 +211,6 @@ public class RobotManager extends Manager {
     }
 
     private MapLocation getEnemyOrFriend(RobotController rc, int minimumFriends, MapLocation defaultLocation) throws GameActionException {
-        if (Radio.readStatus(rc, Radio.NUKE_TIME) && (this.info.distance(this.myLoc, this.info.myHQLoc) > 10)) {
-            return this.info.myHQLoc;
-        }
         GameObject[] friends = rc.senseNearbyGameObjects(
             Robot.class, this.myLoc, 4 * 4, this.info.myTeam);
 
@@ -166,13 +228,11 @@ public class RobotManager extends Manager {
             if (defaultLoc == null) {
                 defaultLoc = this.info.enemyHQLoc;
             }
-            rc.setIndicatorString(1, "Found enemy. Attacking. Friends: " + friends.length + ", Enemies: " + enemies.length);
         } else {
             arr = friends;
             if (defaultLoc == null) {
                 defaultLoc = this.info.myHQLoc;
             }
-            rc.setIndicatorString(1, "Need more friends! Friends: " + friends.length + ", Enemies: " + enemies.length);
         }
         MapLocation closest = defaultLoc;
         int minDistance = 999;
@@ -189,16 +249,19 @@ public class RobotManager extends Manager {
     }
 
     private boolean layMine(RobotController rc) throws GameActionException {
+        if (rc.senseMine(this.myLoc) != null) {
+            return false;
+        }
         MapLocation publicEnemy = Radio.readLocation(rc, Radio.ENEMY);
         GameObject[] enemies = rc.senseNearbyGameObjects(
-            Robot.class, this.myLoc, 10 * 10, this.info.opponent);
+            Robot.class, this.myLoc, 14 * 14, this.info.opponent);
 
         if (enemies.length > 0 ||
                 publicEnemy != null ||
-                this.info.distance(this.myLoc, this.info.myHQLoc) > 10) {
+                this.info.distance(this.myLoc, this.info.myHQLoc) > 15) {
             return false;
         }
-        if (!this.laidMineLastRound && rc.senseMine(this.myLoc) == null) {
+        if (!this.laidMineLastRound) {
             rc.layMine();
             this.laidMineLastRound = true;
             return true;
@@ -283,9 +346,8 @@ public class RobotManager extends Manager {
         }
         //If distance == 2, determine if I have enough friends to attack. If not, retreat.
         else {
-            MapLocation senseLoc = this.myLoc.add(attackDirOptions[0]);
             GameObject[] go = rc.senseNearbyGameObjects(
-                Robot.class, senseLoc, 2, this.info.myTeam);
+                Robot.class, this.myLoc, 2, this.info.myTeam);
 
             if (go.length > 1) {
                 for (int i=0; i < attackDirOptions.length; i++) {

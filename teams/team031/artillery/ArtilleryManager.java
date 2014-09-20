@@ -11,6 +11,7 @@ import battlecode.common.RobotController;
 import battlecode.common.Team;
 
 import team031.interfaces.Manager;
+import team031.common.Radio;
 import team031.common.RobotState;
 import team031.common.MapInfo;
 
@@ -20,6 +21,7 @@ public class ArtilleryManager extends Manager {
     }
 
     public void move(RobotController rc) throws GameActionException {
+        Radio.updateData(rc, Radio.NUM_ENCAMPMENTS, 1);
         if (rc.isActive()) {
             MapLocation loc = rc.getLocation();
             Team myTeam = rc.getTeam();

@@ -22,6 +22,9 @@ public class HeadquartersManager extends Manager {
     int fusionResearch;
     int nukeResearch;
     boolean init = false;
+    int prevNumSoldiers;
+    int prevNumEncampments;
+    int strategy;
 
     public HeadquartersManager(RobotController rc) throws GameActionException {
         this.initialize(rc);
@@ -33,17 +36,31 @@ public class HeadquartersManager extends Manager {
         this.fusionResearch = 25;
         this.nukeResearch = 400;
         this.init = true;
+        this.prevNumSoldiers = 0;
+        this.prevNumEncampments = 0;
+        this.strategy = 0;
     }
 
-    public void move(RobotController rc) throws GameActionException {
+    private void update(RobotController rc) throws GameActionException {
         this.info.update(rc);
         Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
+        this.prevNumSoldiers = Radio.readData(rc, Radio.NUM_SOLDIERS);
+        Radio.writeData(rc, Radio.NUM_SOLDIERS, 0);
+        this.prevNumEncampments = Radio.readData(rc, Radio.NUM_ENCAMPMENTS);
+        Radio.writeData(rc, Radio.NUM_ENCAMPMENTS, 0);
+        rc.setIndicatorString(1, "Soldiers: " + this.prevNumSoldiers + ", Encampments: " + this.prevNumEncampments);
+        this.setStrategy(rc);
+    }
+
+    public void move(RobotController rc) throws GameActionException {
+        this.update(rc);
         if (rc.isActive()) {
-            if (nukeResearch < 100) {
-                Radio.writeStatus(rc, Radio.NUKE_TIME, true);
-                rc.researchUpgrade(Upgrade.NUKE);
-                return;
+            if (this.strategy == 1) {
+                if (this.prevNumSoldiers > 10) {
+                    rc.researchUpgrade(Upgrade.NUKE);
+                    return;
+                }
             }
             if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150)) {
                 rc.researchUpgrade(Upgrade.FUSION);
@@ -62,14 +79,12 @@ public class HeadquartersManager extends Manager {
         GameObject[] go = rc.senseNearbyGameObjects(
             Robot.class, senseLoc, 33 * 33, this.info.opponent);
 
-        rc.setIndicatorString(1, go.length + " enemies.");
         if (go.length == 0) {
             return;
         }
         MapLocation enemyLoc = rc.senseLocationOf(go[0]);
         Radio.writeLocation(rc, Radio.ENEMY, enemyLoc);
     }
-
 
     private void spawn(RobotController rc) throws GameActionException {
         // Spawn a soldier
@@ -93,5 +108,44 @@ public class HeadquartersManager extends Manager {
                 spawnLoc = this.info.myHQLoc.add(dir);
             }
         }
+    }
+
+    private void setStrategy(RobotController rc) throws GameActionException {
+        if (this.info.round > 1000) {
+            Radio.writeData(rc, Radio.STRATEGY, 1);
+            Radio.writeLocation(rc, Radio.OUTPOST, this.info.myHQLoc);
+            this.strategy = 1;
+            return;
+        }
+        int enemyDistance = this.info.distance(
+            this.info.myHQLoc, this.info.enemyHQLoc);
+
+        MapLocation[] encampments = rc.senseEncampmentSquares(
+            this.info.myHQLoc, 5 * 5, null);
+
+        MapLocation[] allEncampments = rc.senseAllEncampmentSquares();
+        rc.setIndicatorString(2, "Strategy: " + this.strategy + ", Enemy distance: " + enemyDistance + ", Close Encampments: " + encampments.length + ", All Encampments: " + allEncampments.length);
+        if (enemyDistance < 30) {
+            Radio.writeData(rc, Radio.STRATEGY, 0);
+            this.strategy = 0;
+            return;
+        }
+        if (encampments.length > 5) {
+            Radio.writeData(rc, Radio.STRATEGY, 1);
+            this.strategy = 1;
+            return;
+        }
+        if (allEncampments.length > 75) {
+            Radio.writeData(rc, Radio.STRATEGY, 2);
+            this.strategy = 2;
+            return;
+        }
+        if (enemyDistance > 40) {
+            Radio.writeData(rc, Radio.STRATEGY, 1);
+            this.strategy = 1;
+            return;
+        }
+        Radio.writeData(rc, Radio.STRATEGY, 0);
+        this.strategy = 0;
     }
 }
