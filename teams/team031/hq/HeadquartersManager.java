@@ -43,7 +43,6 @@ public class HeadquartersManager extends Manager {
 
     private void update(RobotController rc) throws GameActionException {
         this.info.update(rc);
-        //Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
         this.prevNumSoldiers = Radio.readData(rc, Radio.NUM_SOLDIERS);
         Radio.writeData(rc, Radio.NUM_SOLDIERS, 0);
@@ -51,6 +50,8 @@ public class HeadquartersManager extends Manager {
         Radio.writeData(rc, Radio.NUM_ENCAMPMENTS, 0);
         rc.setIndicatorString(1, "Soldiers: " + this.prevNumSoldiers + ", Encampments: " + this.prevNumEncampments);
         this.setStrategy(rc);
+        Radio.writeOldLocation(rc, Radio.ENEMY, new MapLocation(0, 0), 2);
+        Radio.writeOldLocation(rc, Radio.MEDBAY, new MapLocation(0, 0), 2);
     }
 
     public void move(RobotController rc) throws GameActionException {

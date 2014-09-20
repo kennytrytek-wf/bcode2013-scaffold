@@ -85,26 +85,24 @@ public class RobotManager extends Manager {
             if (closest != null) {
                 if (closest.equals(this.myLoc)) {
                     rc.captureEncampment(RobotType.MEDBAY);
-                    //Radio.writeLocation(rc, Radio.MEDBAY, closest);
                     return;
                 } else {
                     if (this.layMine(rc)) {
                         rc.setIndicatorString(0, "Laying mine...");
                         return;
                     }
-                    this.attack(rc, closest, false, true);
+                    rc.setIndicatorString(1, "96, move to medbay: " + closest);
+                    this.attack(rc, closest, true, true);
                     return;
                 }
             }
         } else if (this.myLoc == medbay) {
-            //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
             rc.setIndicatorString(1, "I am MEDBAY: " + medbay);
             rc.captureEncampment(RobotType.MEDBAY);
             return;
         } else if (rc.getEnergon() < (this.initialEnergon / 1.5)) {
-            //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
-            rc.setIndicatorString(1, "Medic!: " + medbay);
-            this.attack(rc, medbay, false, true);
+            rc.setIndicatorString(1, "109, need a medic!: " + medbay);
+            this.attack(rc, medbay, true, true);
             return;
         }
         if (this.layMine(rc)) {
@@ -112,8 +110,8 @@ public class RobotManager extends Manager {
             return;
         }
         MapLocation target = this.getEnemyOrFriend(rc, 0, this.getNextMineLoc(rc));
-        rc.setIndicatorString(1, "Attacking with vengeance: " + medbay);
-        this.attack(rc, target, false, true);
+        rc.setIndicatorString(1, "117, next mine loc or enemy: " + target);
+        this.attack(rc, target, true, true);
     }
 
     private MapLocation getNextMineLoc(RobotController rc) throws GameActionException {
@@ -184,9 +182,7 @@ public class RobotManager extends Manager {
     }
 
     private boolean shouldGather(RobotController rc) throws GameActionException {
-        int numSoldiers = Radio.readOldData(rc, Radio.NUM_SOLDIERS);
-        rc.setIndicatorString(1, "Num Soldiers: " + numSoldiers);
-        return numSoldiers < 12;
+        return Radio.readOldData(rc, Radio.NUM_SOLDIERS) < 12;
     }
 
     private boolean establishOutpost(RobotController rc) throws GameActionException {
@@ -262,18 +258,22 @@ public class RobotManager extends Manager {
             Robot.class, this.myLoc, 4 * 4, this.info.opponent);
 
         GameObject[] arr = null;
+        boolean isEnemy;
         MapLocation defaultLoc = defaultLocation;
         if ((friends.length > enemies.length) && (friends.length > minimumFriends)) {
             MapLocation publicEnemy = Radio.readLocation(rc, Radio.ENEMY);
             if (publicEnemy != null) {
+                rc.setIndicatorString(2, "Public enemy: " + publicEnemy);
                 return publicEnemy;
             }
             arr = enemies;
+            isEnemy = true;
             if (defaultLoc == null) {
                 defaultLoc = this.info.enemyHQLoc;
             }
         } else {
             arr = friends;
+            isEnemy = false;
             if (defaultLoc == null) {
                 defaultLoc = this.info.myHQLoc;
             }
@@ -288,7 +288,9 @@ public class RobotManager extends Manager {
                 closest = robotLoc;
             }
         }
-        Radio.writeLocation(rc, Radio.ENEMY, closest);
+        if (isEnemy) {
+            Radio.writeLocation(rc, Radio.ENEMY, closest);
+        }
         return closest;
     }
 

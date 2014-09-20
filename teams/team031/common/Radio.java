@@ -20,7 +20,7 @@ public class Radio {
             case Radio.ENEMY: channel = 58293; break;
             case Radio.CANARY: channel = 57487; break;
             case Radio.OUTPOST: channel = 25998; break;
-            case Radio.MEDBAY: channel = 34986; break;
+            case Radio.MEDBAY: channel = 34982; break;
             case Radio.NUM_SOLDIERS: channel = 33285; break;
             case Radio.NUM_ENCAMPMENTS: channel = 9975; break;
             case Radio.STRATEGY: channel = 47681; break;
@@ -67,6 +67,15 @@ public class Radio {
         int y = loc.y & 0x00FF;
         int encodedLocation = x | y;
         Radio.send(rc, channel, encodedLocation);
+    }
+
+    public static void writeOldLocation(RobotController rc, int channel, MapLocation loc, int numRoundsOld) throws GameActionException {
+        int x = ((loc.x << 8) & 0xFF00);
+        int y = loc.y & 0x00FF;
+        int encodedLocation = x | y;
+        int roundNum = Clock.getRoundNum();
+
+        rc.broadcast(Radio.getBroadcastChannel(channel, roundNum - numRoundsOld), encodedLocation);
     }
 
     public static MapLocation readLocation(RobotController rc, int channel) throws GameActionException {
