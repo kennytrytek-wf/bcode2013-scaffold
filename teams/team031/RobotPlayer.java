@@ -7,6 +7,7 @@ import battlecode.common.RobotType;
 import team031.artillery.ArtilleryManager;
 import team031.interfaces.Manager;
 import team031.hq.HeadquartersManager;
+import team031.robot.MedBay;
 import team031.robot.NOOP;
 import team031.robot.RobotManager;
 
@@ -19,6 +20,8 @@ public class RobotPlayer {
             RobotPlayer.move(new RobotManager(rc), rc);
         } else if (type == RobotType.ARTILLERY) {
             RobotPlayer.move(new ArtilleryManager(), rc);
+        } else if (type == RobotType.MEDBAY) {
+            RobotPlayer.move(new MedBay(rc), rc);
         } else {
             RobotPlayer.move(new NOOP(), rc);
         }

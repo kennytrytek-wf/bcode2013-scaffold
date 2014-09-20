@@ -23,11 +23,6 @@ public class ArtilleryManager extends Manager {
     public void move(RobotController rc) throws GameActionException {
         Radio.updateData(rc, Radio.NUM_ENCAMPMENTS, 1);
         if (rc.isActive()) {
-            MapLocation enemyLoc = Radio.readLocation(rc, Radio.ENEMY);
-            if ((enemyLoc != null) && rc.canAttackSquare(enemyLoc)) {
-                rc.attackSquare(enemyLoc);
-                return;
-            }
             MapLocation loc = rc.getLocation();
             Team myTeam = rc.getTeam();
             GameObject[] go = rc.senseNearbyGameObjects(Robot.class, loc, 33 * 33, myTeam.opponent());

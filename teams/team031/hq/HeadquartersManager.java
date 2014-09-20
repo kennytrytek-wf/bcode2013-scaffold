@@ -43,7 +43,7 @@ public class HeadquartersManager extends Manager {
 
     private void update(RobotController rc) throws GameActionException {
         this.info.update(rc);
-        Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
+        //Radio.writeLocation(rc, Radio.ENEMY, new MapLocation(0, 0));
         this.signalIfEnemies(rc);
         this.prevNumSoldiers = Radio.readData(rc, Radio.NUM_SOLDIERS);
         Radio.writeData(rc, Radio.NUM_SOLDIERS, 0);
@@ -85,6 +85,7 @@ public class HeadquartersManager extends Manager {
         }
         MapLocation enemyLoc = rc.senseLocationOf(go[0]);
         Radio.writeLocation(rc, Radio.ENEMY, enemyLoc);
+        Radio.writeLocation(rc, Radio.OUTPOST, this.info.myHQLoc);
     }
 
     private void spawn(RobotController rc) throws GameActionException {

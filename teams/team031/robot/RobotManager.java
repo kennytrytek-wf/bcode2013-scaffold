@@ -68,6 +68,7 @@ public class RobotManager extends Manager {
     private void nuke(RobotController rc) throws GameActionException {
         MapLocation medbay = Radio.readLocation(rc, Radio.MEDBAY);
         if (medbay == null) {
+            rc.setIndicatorString(1, "Medbay is null: " + medbay);
             MapLocation[] encampments = rc.senseEncampmentSquares(
                 this.info.myHQLoc, 5 * 5, null);
 
@@ -84,7 +85,7 @@ public class RobotManager extends Manager {
             if (closest != null) {
                 if (closest.equals(this.myLoc)) {
                     rc.captureEncampment(RobotType.MEDBAY);
-                    Radio.writeLocation(rc, Radio.MEDBAY, closest);
+                    //Radio.writeLocation(rc, Radio.MEDBAY, closest);
                     return;
                 } else {
                     if (this.layMine(rc)) {
@@ -97,10 +98,12 @@ public class RobotManager extends Manager {
             }
         } else if (this.myLoc == medbay) {
             //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
+            rc.setIndicatorString(1, "I am MEDBAY: " + medbay);
             rc.captureEncampment(RobotType.MEDBAY);
             return;
         } else if (rc.getEnergon() < (this.initialEnergon / 1.5)) {
             //Radio.writeLocation(rc, Radio.MEDBAY, medbay);
+            rc.setIndicatorString(1, "Medic!: " + medbay);
             this.attack(rc, medbay, false, true);
             return;
         }
@@ -109,6 +112,7 @@ public class RobotManager extends Manager {
             return;
         }
         MapLocation target = this.getEnemyOrFriend(rc, 0, this.getNextMineLoc(rc));
+        rc.setIndicatorString(1, "Attacking with vengeance: " + medbay);
         this.attack(rc, target, false, true);
     }
 
