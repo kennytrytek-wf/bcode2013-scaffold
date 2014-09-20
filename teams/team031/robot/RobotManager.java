@@ -104,7 +104,6 @@ public class RobotManager extends Manager {
             this.attack(rc, medbay, false, true);
             return;
         }
-
         if (this.layMine(rc)) {
             rc.setIndicatorString(0, "Laying mine...");
             return;

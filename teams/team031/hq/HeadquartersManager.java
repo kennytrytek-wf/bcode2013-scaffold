@@ -56,13 +56,14 @@ public class HeadquartersManager extends Manager {
     public void move(RobotController rc) throws GameActionException {
         this.update(rc);
         if (rc.isActive()) {
-            if (this.strategy == 1) {
+            if (this.strategy == 1 || this.nukeResearch < 50) {
                 if (this.prevNumSoldiers > 10) {
                     rc.researchUpgrade(Upgrade.NUKE);
+                    this.nukeResearch -= 1;
                     return;
                 }
             }
-            if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150)) {
+            if ((this.info.round > 200) && (this.fusionResearch > 0) && (this.info.teamPower < 150) && (this.strategy != 1)) {
                 rc.researchUpgrade(Upgrade.FUSION);
                 this.fusionResearch -= 1;
             } else if ((this.fusionResearch == 0) && (this.info.teamPower < 250)) {
