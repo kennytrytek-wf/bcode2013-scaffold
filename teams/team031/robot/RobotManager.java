@@ -61,7 +61,39 @@ public class RobotManager extends Manager {
             case 0: this.rush(rc); break;
             case 1: this.nuke(rc); break;
             case 2: this.econ(rc); break;
+            case 3: this.beeline(rc); break;
             default: this.rush(rc); break;
+        }
+    }
+
+    private void beeline(RobotController rc) throws GameActionException {
+        MapLocation target = this.getEnemyOrFriend(rc, 0, this.info.enemyHQLoc);
+        rc.setIndicatorString(1, "Beeline: " + target);
+        Direction toEnemyHQ = this.myLoc.directionTo(this.info.enemyHQLoc);
+        Direction[] beelineArr = {toEnemyHQ, toEnemyHQ.rotateLeft(), toEnemyHQ.rotateRight()};
+        Direction canMove = null;
+        Direction defuseDir = null;
+        MapLocation defuse = null;
+        for (int i=0; i < beelineArr.length; i++) {
+            Direction dir = beelineArr[i];
+            MapLocation nextLoc = this.myLoc.add(dir);
+            if (rc.canMove(dir)) {
+                canMove = dir;
+                if (!this.hasEnemyMine(rc, nextLoc)) {
+                    rc.move(dir);
+                    return;
+                } else {
+                    defuseDir = dir;
+                    defuse = nextLoc;
+                }
+            }
+        }
+        if (canMove != null) {
+            if (canMove.equals(defuseDir)) {
+                rc.defuseMine(defuse);
+            } else {
+                rc.move(canMove);
+            }
         }
     }
 
@@ -175,7 +207,7 @@ public class RobotManager extends Manager {
                 rc.setIndicatorString(0, "Found enemy: " + movingTarget);
             }
         } else {
-            movingTarget = this.getEnemyOrFriend(rc, 2, this.info.enemyHQLoc);
+            movingTarget = this.getEnemyOrFriend(rc, 1, this.info.enemyHQLoc);
             rc.setIndicatorString(0, "Attacking: " + movingTarget);
         }
         this.attack(rc, movingTarget, this.roundsInSameLoc > 3, true);

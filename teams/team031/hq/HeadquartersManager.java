@@ -58,7 +58,7 @@ public class HeadquartersManager extends Manager {
         this.update(rc);
         if (rc.isActive()) {
             if (this.strategy == 1 || this.nukeResearch < 50) {
-                if (this.prevNumSoldiers > 10) {
+                if (this.prevNumSoldiers > 9) {
                     rc.researchUpgrade(Upgrade.NUKE);
                     this.nukeResearch -= 1;
                     return;
@@ -114,7 +114,13 @@ public class HeadquartersManager extends Manager {
     }
 
     private void setStrategy(RobotController rc) throws GameActionException {
-        if (this.info.round > 1000) {
+        if (this.nukeResearch > 200 && rc.senseEnemyNukeHalfDone()) {
+            Radio.writeData(rc, Radio.STRATEGY, 3);
+            this.strategy = 3;
+            this.nukeResearch = 999;
+            return;
+        }
+        if (this.info.round > 800) {
             Radio.writeData(rc, Radio.STRATEGY, 1);
             Radio.writeLocation(rc, Radio.OUTPOST, this.info.myHQLoc);
             this.strategy = 1;
