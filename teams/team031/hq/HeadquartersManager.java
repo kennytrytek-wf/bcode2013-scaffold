@@ -58,7 +58,7 @@ public class HeadquartersManager extends Manager {
         this.update(rc);
         if (rc.isActive()) {
             if (this.strategy == 1 || this.nukeResearch < 50) {
-                if (this.prevNumSoldiers > 9) {
+                if (this.prevNumSoldiers > 10) {
                     rc.researchUpgrade(Upgrade.NUKE);
                     this.nukeResearch -= 1;
                     return;
