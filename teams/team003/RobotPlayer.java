@@ -1,15 +1,15 @@
-package team031;
+package team003;
 
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 import battlecode.common.RobotType;
 
-import team031.artillery.ArtilleryManager;
-import team031.interfaces.Manager;
-import team031.hq.HeadquartersManager;
-import team031.robot.MedBay;
-import team031.robot.NOOP;
-import team031.robot.RobotManager;
+import team003.artillery.ArtilleryManager;
+import team003.interfaces.Manager;
+import team003.hq.HeadquartersManager;
+import team003.robot.MedBay;
+import team003.robot.NOOP;
+import team003.robot.RobotManager;
 
 public class RobotPlayer {
 	public static void run(RobotController rc) throws GameActionException {

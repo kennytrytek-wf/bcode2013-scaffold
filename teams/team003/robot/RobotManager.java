@@ -1,4 +1,4 @@
-package team031.robot;
+package team003.robot;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -15,11 +15,11 @@ import battlecode.common.RobotType;
 import battlecode.common.Robot;
 import battlecode.common.Team;
 
-import team031.common.Info;
-import team031.common.Radio;
-import team031.common.RobotState;
-import team031.interfaces.Manager;
-import team031.hq.HeadquartersManager;
+import team003.common.Info;
+import team003.common.Radio;
+import team003.common.RobotState;
+import team003.interfaces.Manager;
+import team003.hq.HeadquartersManager;
 
 
 public class RobotManager extends Manager {

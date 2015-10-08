@@ -1,4 +1,4 @@
-package team031.artillery;
+package team003.artillery;
 
 import java.util.Random;
 
@@ -10,10 +10,10 @@ import battlecode.common.Robot;
 import battlecode.common.RobotController;
 import battlecode.common.Team;
 
-import team031.interfaces.Manager;
-import team031.common.Radio;
-import team031.common.RobotState;
-import team031.common.MapInfo;
+import team003.interfaces.Manager;
+import team003.common.Radio;
+import team003.common.RobotState;
+import team003.common.MapInfo;
 
 public class ArtilleryManager extends Manager {
     public RobotState createRobotState(RobotController rc) {

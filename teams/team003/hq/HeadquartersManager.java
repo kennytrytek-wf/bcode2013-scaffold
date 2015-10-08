@@ -1,4 +1,4 @@
-package team031.hq;
+package team003.hq;
 
 import java.util.Random;
 
@@ -12,9 +12,9 @@ import battlecode.common.RobotController;
 import battlecode.common.Team;
 import battlecode.common.Upgrade;
 
-import team031.interfaces.Manager;
-import team031.common.Info;
-import team031.common.Radio;
+import team003.interfaces.Manager;
+import team003.common.Info;
+import team003.common.Radio;
 
 public class HeadquartersManager extends Manager {
     Info info;
