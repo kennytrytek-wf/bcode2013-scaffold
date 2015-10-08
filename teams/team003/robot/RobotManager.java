@@ -401,7 +401,6 @@ public class RobotManager extends Manager {
     }
 
     private Direction getAttackDirection(RobotController rc, MapLocation target, Direction preferredDir) {
-        //Get distance between me and enemy
         int distanceToEnemy = this.info.distance(this.myLoc, target);
         //If distance > 2, find any direction toward enemy
         Direction[] attackDirOptions = {
